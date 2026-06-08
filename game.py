@@ -44,13 +44,6 @@ class GameWorld:
         
         self.font = pygame.font.Font(None, 28)
         self.font_title = pygame.font.Font(None, 36)
-
-
-        print("=== ИГРОКИ СОЗДАНЫ ===")
-        for p in self.players:
-            cell = BOARD_CELLS[p.position]
-            print(f"  {p.name} (id={p.id}) на клетке {p.position}: {cell['name']} x={cell['x']} y={cell['y']}")
-        print("=======================")
     
     def select_cell(self, cell_id):
         self.selected_cell = cell_id
@@ -119,19 +112,6 @@ class GameWorld:
                 pygame.draw.rect(screen, GOLD, cell_rect, 3)
             
             pygame.draw.rect(screen, (255, 255, 255, 30), cell_rect, 1)
-        
-
-
-
-
-        print("--- ОТРИСОВКА ИГРОКОВ ---")
-        print(f"map_x={map_x}, map_y={map_y}")
-        for player in self.players:
-            cell = BOARD_CELLS[player.position]
-            print(f"  {player.name}: клетка {player.position} ({cell['name']}) x={cell['x']} y={cell['y']}")
-
-
-
 
         # === Жетоны игроков (исправлено!) ===
         for player in self.players:
