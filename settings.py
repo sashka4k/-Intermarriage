@@ -22,7 +22,9 @@ RED = (200, 50, 50)
 PANEL_BG = (40, 40, 60, 200)  # с альфа-каналом
 
 # Пути к файлам
-BACKGROUND_IMAGE = "ancient_map_without_steps.png"
+BACKGROUND_IMAGE = "Prefabs/Pictures/main_menu.png"
+MAP_WITHOUT_STEPS = "Prefabs/Pictures/ancient_map_without_steps.png"
+MAP_STEPS = "Prefabs/Pictures/ancient_map_steps.png"
 
 
 

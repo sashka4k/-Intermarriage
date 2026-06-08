@@ -31,13 +31,13 @@ class GameWorld:
         )
         
         try:
-            self.map_image = pygame.image.load(BACKGROUND_IMAGE)
+            self.map_image = pygame.image.load(MAP_WITHOUT_STEPS)
             self.map_image = pygame.transform.scale(self.map_image, (MAP_WIDTH, MAP_HEIGHT))
         except:
             self.map_image = None
         
         try:
-            self.steps_image = pygame.image.load("ancient_map_steps.png")
+            self.steps_image = pygame.image.load(MAP_STEPS)
             self.steps_image = pygame.transform.scale(self.steps_image, (MAP_WIDTH, MAP_HEIGHT))
         except:
             self.steps_image = None
@@ -226,7 +226,7 @@ class GameWorld:
             
             if player == self.current_player:
                 status = " (идёт...)" if player.moving else ""
-                text = self.font.render(f"▶ {player.name}: {player.points} очк.{status}", True, GOLD)
+                text = self.font.render(f"> {player.name}: {player.points} очк.{status}", True, GOLD)
             else:
                 text = self.font.render(f"  {player.name}: {player.points} очк.", True, WHITE)
             screen.blit(text, (panel_x + 45, y_offset))
