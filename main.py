@@ -1,33 +1,47 @@
 import pygame
 import sys
 from settings import *
-from menu import MainMenu, PauseMenu
+from menu import MainMenu, PauseMenu, PlayerSetupMenu
 from game import GameWorld
+from player import Player
 
 class Game:
     def __init__(self):
         pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        
+        info = pygame.display.Info()
+        self.SCREEN_WIDTH = info.current_w
+        self.SCREEN_HEIGHT = info.current_h
+        
+        self.screen = pygame.display.set_mode(
+            (self.SCREEN_WIDTH, self.SCREEN_HEIGHT),
+            pygame.FULLSCREEN
+        )
         pygame.display.set_caption("Междуземье")
+        
         self.clock = pygame.time.Clock()
         self.running = True
         
-        # Состояния игры
-        self.state = "menu"  # menu, game, pause, game_over
+        self.map_x = self.SCREEN_WIDTH - MAP_WIDTH - MAP_MARGIN_RIGHT
+        self.map_y = MAP_MARGIN_TOP
         
-        # Инициализация меню
-        self.main_menu = MainMenu()
-        self.pause_menu = PauseMenu()
+        self.state = "menu"
         
-        # Загрузка фона для меню
-        try:
-            self.menu_background = pygame.image.load(BACKGROUND_IMAGE)
-            self.menu_background = pygame.transform.scale(self.menu_background, (SCREEN_WIDTH, SCREEN_HEIGHT))
-        except:
-            self.menu_background = None
-            
+        self.main_menu = MainMenu(self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+        self.player_setup = PlayerSetupMenu(self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+        self.pause_menu = PauseMenu(self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+        
         self.game_world = None
         
+        try:
+            self.menu_background = pygame.image.load(BACKGROUND_IMAGE)
+            self.menu_background = pygame.transform.scale(
+                self.menu_background, 
+                (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+            )
+        except:
+            self.menu_background = None
+    
     def run(self):
         while self.running:
             mouse_pos = pygame.mouse.get_pos()
@@ -35,21 +49,51 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
-                    
-                # Обработка событий в зависимости от состояния
+                
+                if self.state == "player_setup":
+                    self.player_setup.handle_event(event)
+                
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        if self.state == "game":
+                            self.state = "pause"
+                        elif self.state == "pause":
+                            self.state = "game"
+                        elif self.state == "player_setup":
+                            self.state = "menu"
+                
+                # === Обработка по состояниям ===
                 if self.state == "menu":
                     action = self.main_menu.handle_click(mouse_pos, event)
                     if action == "new_game":
-                        self.start_new_game()
-                        self.state = "game"
+                        self.state = "player_setup"
                     elif action == "exit":
                         self.running = False
-                        
+                
+                elif self.state == "player_setup":
+                    action = self.player_setup.handle_click(mouse_pos, event)
+                    if action == "start_game":
+                        names = self.player_setup.get_player_names()
+                        self.start_new_game(names)
+                        self.state = "game"
+                    elif action == "back":
+                        self.state = "menu"
+                
                 elif self.state == "game":
+                    if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        # Проверка кнопки броска
+                        if self.game_world.roll_button.is_clicked(mouse_pos, event):
+                            self.game_world.roll_dice()
+                        else:
+                            # Клик по карте
+                            cell_id = self.game_world.get_cell_at_mouse(mouse_pos)
+                            if cell_id is not None:
+                                self.game_world.select_cell(cell_id)
+                    
                     if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_ESCAPE:
-                            self.state = "pause"
-                            
+                        if event.key == pygame.K_SPACE:
+                            self.game_world.next_turn()
+                
                 elif self.state == "pause":
                     action = self.pause_menu.handle_click(mouse_pos, event)
                     if action == "resume":
@@ -58,66 +102,48 @@ class Game:
                         self.state = "menu"
                     elif action == "exit":
                         self.running = False
-                        
-                elif self.state == "game_over":
-                    if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_RETURN:
-                            self.start_new_game()
-                            self.state = "game"
-                        elif event.key == pygame.K_ESCAPE:
-                            self.state = "menu"
             
-            # Обновление в зависимости от состояния
+            # === Обновление ===
             if self.state == "menu":
                 self.main_menu.update(mouse_pos)
-                
+            elif self.state == "player_setup":
+                self.player_setup.update(mouse_pos)
             elif self.state == "game":
                 keys = pygame.key.get_pressed()
-                game_running = self.game_world.update(keys)
-                if not game_running:
-                    self.state = "game_over"
-                    
+                self.game_world.update(keys)
             elif self.state == "pause":
                 self.pause_menu.update(mouse_pos)
             
-            # Отрисовка
+            # === Отрисовка ===
+            self.screen.fill(BLACK)
+            
             if self.state == "menu":
                 self.main_menu.draw(self.screen, self.menu_background)
-                
+            
+            elif self.state == "player_setup":
+                self.player_setup.draw(self.screen, self.menu_background)
+            
             elif self.state == "game":
-                self.game_world.draw(self.screen)
-                
+                self.game_world.draw(self.screen, self.map_x, self.map_y)
+            
             elif self.state == "pause":
-                self.game_world.draw(self.screen)  # Фон игры
-                self.pause_menu.draw(self.screen)   # Меню паузы поверх
-                
-            elif self.state == "game_over":
-                self.game_world.draw(self.screen)
-                # Рисуем экран Game Over
-                overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-                overlay.set_alpha(128)
-                overlay.fill(BLACK)
-                self.screen.blit(overlay, (0, 0))
-                
-                font = pygame.font.Font(None, 72)
-                game_over = font.render("GAME OVER", True, (255, 0, 0))
-                game_over_rect = game_over.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
-                self.screen.blit(game_over, game_over_rect)
-                
-                font_small = pygame.font.Font(None, 36)
-                restart = font_small.render("Нажми ENTER для новой игры или ESC для выхода в меню", True, WHITE)
-                restart_rect = restart.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50))
-                self.screen.blit(restart, restart_rect)
-                
+                self.game_world.draw(self.screen, self.map_x, self.map_y)
+                self.pause_menu.draw(self.screen)
+            
             pygame.display.flip()
             self.clock.tick(60)
-            
+        
         pygame.quit()
         sys.exit()
+    
+    def start_new_game(self, names):
+        players = []
+        for i, name in enumerate(names):
+            player = Player(name, PLAYER_COLORS[i], i)
+            players.append(player)
         
-    def start_new_game(self):
-        """Начинает новую игру"""
-        self.game_world = GameWorld()
+        self.game_world = GameWorld(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, 
+                                     self.map_x, self.map_y, players)
 
 if __name__ == "__main__":
     game = Game()
