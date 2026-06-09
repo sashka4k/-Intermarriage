@@ -75,27 +75,67 @@ class Game:
                 
                 elif self.state == "game":
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                        # Проверка кнопки броска
-                        if self.game_world.phase == "roll" and self.game_world.roll_button.is_clicked(mouse_pos, event):
-                            self.game_world.roll_dice()
-                        # Проверка кнопки "Идти"
-                        elif self.game_world.phase == "wait_move" and self.game_world.move_button.is_clicked(mouse_pos, event):
-                            self.game_world.start_movement()
-                        else:
-                            # Клик по карте
+                        # Если рука открыта — проверяем клик по карте
+                        if self.game_world.current_player.hand.visible:
+                            card_idx = self.game_world.current_player.hand.get_clicked_card(
+                                mouse_pos, self.SCREEN_WIDTH, self.SCREEN_HEIGHT
+                            )
+                            if card_idx is not None:
+                                result = self.game_world.play_card(card_idx)
+                                if result == "teleport_pending":
+                                    pass  # ждём клика по карте
+                                elif result == "building_pending":
+                                    pass  # ждём клика по карте
+                                continue  # не обрабатываем другие клики
+        
+                        # Если ждём телепорт или постройку — клик по карте
+                        if self.game_world.selected_card_index is not None:
                             cell_id = self.game_world.get_cell_at_mouse(mouse_pos)
                             if cell_id is not None:
-                                self.game_world.select_cell(cell_id)
-                    
+                                hand = self.game_world.current_player.hand
+                                if self.game_world.selected_card_index < hand.count():
+                                    card = hand.get_cards()[self.game_world.selected_card_index]
+                                    if card.type == "teleport":
+                                        self.game_world.confirm_teleport(cell_id)
+                                    elif card.type == "building":
+                                        self.game_world.confirm_building(cell_id)
+                                continue
+        
+                        # Кнопка просмотра руки
+                        if self.game_world.hand_button.is_clicked(mouse_pos, event):
+                            self.game_world.toggle_hand()
+                            continue
+        
+                        # Кнопка броска
+                        if self.game_world.phase == "roll" and self.game_world.roll_button.is_clicked(mouse_pos, event):
+                            self.game_world.roll_dice()
+                            continue
+        
+                        # Кнопка "Идти"
+                        if self.game_world.phase == "wait_move" and self.game_world.move_button.is_clicked(mouse_pos, event):
+                            self.game_world.start_movement()
+                            continue
+        
+                        # Стрелки развилок
+                        if self.game_world.phase == "fork_wait":
+                            target = self.game_world.get_fork_click(mouse_pos)
+                            if target is not None:
+                                self.game_world.choose_fork(target)
+                            continue
+        
+                       # Обычный клик по карте (показ информации)
+                        cell_id = self.game_world.get_cell_at_mouse(mouse_pos)
+                        if cell_id is not None:
+                            self.game_world.select_cell(cell_id)
+    
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_SPACE:
-                        # next_turn сам проверит, можно ли сменить ход
                             self.game_world.next_turn()
                         elif event.key == pygame.K_ESCAPE:
                             self.state = "pause"
-                    
-                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                        self.state = "pause"
+                        elif event.key == pygame.K_TAB:
+                            # TAB — быстрое открытие/закрытие руки
+                            self.game_world.toggle_hand()
 
                 
                 elif self.state == "pause":
@@ -150,7 +190,8 @@ class Game:
             players.append(player)
         
         self.game_world = GameWorld(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, 
-                                     self.map_x, self.map_y, players)
+                             self.map_x, self.map_y, players)
+        self.game_world.give_starting_cards()
 
 if __name__ == "__main__":
     game = Game()

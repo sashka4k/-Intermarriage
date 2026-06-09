@@ -1,5 +1,6 @@
 import pygame
 from settings import *
+from card import CardHand
 
 class Player:
     def __init__(self, name, color, player_id):
@@ -9,7 +10,7 @@ class Player:
         self.position = START_CELL  # все начинают со старта
         self.money = 0
         self.points = 0
-        self.cards = []
+        self.hand = None
         
         # Анимация
         self.moving = False
@@ -18,6 +19,8 @@ class Player:
         self.move_speed = 0.08
         self.draw_x = None  # текущая X для отрисовки
         self.draw_y = None  # текущая Y для отрисовки
+
+        self.hand = CardHand(max_cards=5)
     
     def start_move(self, path):
         """Начать движение по пути"""
@@ -69,19 +72,28 @@ class Player:
         self.draw_x = x1 + (x2 - x1) * t
         self.draw_y = y1 + (y2 - y1) * t
     
-    def move(self, steps):
-        """Вычисляет путь на steps шагов вперёд"""
+    def move(self, steps, force_path=None):
+        """
+        Вычисляет путь на steps шагов вперёд.
+        Если force_path передан — идём по принудительному пути (после выбора на развилке).
+        """
+        if force_path is not None:
+            self.start_move(force_path)
+            return force_path[-1]
+    
         path = [self.position]
         current = self.position
-        
+    
         for _ in range(steps):
             cell = BOARD_CELLS[current]
-            if cell['PATH'] and cell['PATH'][0] != -1:
-                current = cell['PATH'][0]
+            # Берём первый доступный путь
+            valid_paths = [p for p in cell['PATH'] if p != -1]
+            if valid_paths:
+                current = valid_paths[0]
                 path.append(current)
             else:
                 break
-        
+    
         self.start_move(path)
         return current
     
