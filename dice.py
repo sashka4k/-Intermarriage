@@ -7,15 +7,19 @@ class Dice:
     def __init__(self):
         self.die1 = 1
         self.die2 = 1
+        self.final_die1 = 1
+        self.final_die2 = 1
         self.rolling = False
         self.roll_time = 0
         self.roll_duration = 30  # кадров анимации
         self.result_shown = False
     
     def roll(self):
-        """Бросок кубиков"""
-        self.die1 = random.randint(1, 6)
-        self.die2 = random.randint(1, 6)
+        """Бросок кубиков — финальный результат определяется сразу"""
+        self.final_die1 = random.randint(1, 6)
+        self.final_die2 = random.randint(1, 6)
+        self.die1 = 1
+        self.die2 = 1
         self.rolling = True
         self.roll_time = 0
         self.result_shown = False
@@ -24,14 +28,14 @@ class Dice:
         """Анимация броска"""
         if self.rolling:
             self.roll_time += 1
-            # Пока крутятся — меняем значения
             if self.roll_time < self.roll_duration:
+                # Пока крутятся — меняем значения случайно
                 self.die1 = random.randint(1, 6)
                 self.die2 = random.randint(1, 6)
             else:
-                # Финальный результат
-                self.die1 = random.randint(1, 6)
-                self.die2 = random.randint(1, 6)
+                # Показываем сохранённый финальный результат
+                self.die1 = self.final_die1
+                self.die2 = self.final_die2
                 self.rolling = False
                 self.result_shown = True
     
@@ -43,6 +47,13 @@ class Dice:
         """Дубль?"""
         return self.die1 == self.die2
     
+    def reset(self):
+        """Сброс для нового хода"""
+        self.rolling = False
+        self.result_shown = False
+        self.die1 = 1
+        self.die2 = 1
+    
     def draw(self, screen, x, y):
         """Отрисовка кубиков"""
         dice_size = 60
@@ -50,11 +61,10 @@ class Dice:
         
         # Кубик 1
         self.draw_die(screen, x, y, self.die1, dice_size)
-        
         # Кубик 2
         self.draw_die(screen, x + dice_size + spacing, y, self.die2, dice_size)
         
-        # Сумма
+        # Сумма — показываем только когда бросок завершён
         if self.result_shown and not self.rolling:
             font = pygame.font.Font(None, 48)
             total_text = font.render(f"= {self.get_total()}", True, GOLD)
@@ -62,16 +72,13 @@ class Dice:
     
     def draw_die(self, screen, x, y, value, size):
         """Рисует один кубик с точками"""
-        # Фон кубика
         dice_rect = pygame.Rect(x, y, size, size)
         pygame.draw.rect(screen, WHITE, dice_rect, border_radius=10)
         pygame.draw.rect(screen, BLACK, dice_rect, 2, border_radius=10)
         
-        # Точки на кубике
         dot_color = BLACK
         dot_radius = 7
         
-        # Центры для 9 позиций (сетка 3x3)
         cx = x + size // 2
         cy = y + size // 2
         offset = size // 4

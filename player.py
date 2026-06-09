@@ -22,7 +22,7 @@ class Player:
     def start_move(self, path):
         """Начать движение по пути"""
         if len(path) < 2:
-            self.position = path[-1]
+            self.position = path[-1] if path else self.position
             return
         
         self.move_path = path
@@ -76,7 +76,7 @@ class Player:
         
         for _ in range(steps):
             cell = BOARD_CELLS[current]
-            if cell['PATH']:
+            if cell['PATH'] and cell['PATH'][0] != -1:
                 current = cell['PATH'][0]
                 path.append(current)
             else:
@@ -89,7 +89,7 @@ class Player:
         return self.moving
     
     def draw(self, screen, map_x, map_y, offset):
-        """Рисует жетон игрока"""
+        """Рисует жетон игрока — единый метод отрисовки"""
         if self.moving and self.draw_x is not None:
             cx = map_x + self.draw_x
             cy = map_y + self.draw_y
@@ -97,17 +97,18 @@ class Player:
             cell = BOARD_CELLS[self.position]
             cx = map_x + cell['x'] + CELL_SIZE // 2
             cy = map_y + cell['y'] + CELL_SIZE // 2
-        
-        x = cx + offset[0]
-        y = cy + offset[1]
-        
+    
+        px = cx + offset[0]
+        py = cy + offset[1]
+    
         # Тень
-        pygame.draw.circle(screen, (0, 0, 0, 100), (x + 2, y + 2), 14)
+        pygame.draw.circle(screen, (0, 0, 0), (px + 2, py + 2), 14)
         # Жетон
-        pygame.draw.circle(screen, self.color, (x, y), 14)
-        pygame.draw.circle(screen, WHITE, (x, y), 14, 2)
-        
+        pygame.draw.circle(screen, self.color, (px, py), 14)
+        pygame.draw.circle(screen, WHITE, (px, py), 14, 2)
+    
+        # Номер игрока
         font = pygame.font.Font(None, 20)
         text = font.render(str(self.id + 1), True, WHITE)
-        text_rect = text.get_rect(center=(x, y))
+        text_rect = text.get_rect(center=(px, py))
         screen.blit(text, text_rect)

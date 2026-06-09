@@ -53,15 +53,6 @@ class Game:
                 if self.state == "player_setup":
                     self.player_setup.handle_event(event)
                 
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        if self.state == "game":
-                            self.state = "pause"
-                        elif self.state == "pause":
-                            self.state = "game"
-                        elif self.state == "player_setup":
-                            self.state = "menu"
-                
                 # === Обработка по состояниям ===
                 if self.state == "menu":
                     action = self.main_menu.handle_click(mouse_pos, event)
@@ -78,12 +69,18 @@ class Game:
                         self.state = "game"
                     elif action == "back":
                         self.state = "menu"
+
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        self.state = "menu"
                 
                 elif self.state == "game":
                     if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                         # Проверка кнопки броска
-                        if self.game_world.roll_button.is_clicked(mouse_pos, event):
+                        if self.game_world.phase == "roll" and self.game_world.roll_button.is_clicked(mouse_pos, event):
                             self.game_world.roll_dice()
+                        # Проверка кнопки "Идти"
+                        elif self.game_world.phase == "wait_move" and self.game_world.move_button.is_clicked(mouse_pos, event):
+                            self.game_world.start_movement()
                         else:
                             # Клик по карте
                             cell_id = self.game_world.get_cell_at_mouse(mouse_pos)
@@ -92,7 +89,14 @@ class Game:
                     
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_SPACE:
+                        # next_turn сам проверит, можно ли сменить ход
                             self.game_world.next_turn()
+                        elif event.key == pygame.K_ESCAPE:
+                            self.state = "pause"
+                    
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        self.state = "pause"
+
                 
                 elif self.state == "pause":
                     action = self.pause_menu.handle_click(mouse_pos, event)
@@ -102,6 +106,9 @@ class Game:
                         self.state = "menu"
                     elif action == "exit":
                         self.running = False
+
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        self.state = "game"
             
             # === Обновление ===
             if self.state == "menu":

@@ -20,14 +20,23 @@ class GameWorld:
         self.dice = Dice()
         self.steps = 0
         self.rolled = False
-        
+        self.can_move = False  # можно ли начать движение
+
         button_width = 200
         button_height = 50
         self.roll_button = Button(
             30,
-            self.screen_height // 2 + 50,
+            self.map_y + 170,
             button_width, button_height,
             "Бросить кубики", BLUE, LIGHT_BLUE
+        )
+
+        # Кнопка "Идти" — появляется после броска
+        self.move_button = Button(
+            30,
+            self.map_y + 230,
+            button_width, button_height,
+            "Идти", BLUE, LIGHT_BLUE
         )
         
         try:
@@ -62,28 +71,50 @@ class GameWorld:
                 return cell_id
         return None
     
-    def update(self, keys):
+    def update(self, keys=None):
+        """Обновление игрового мира"""
         self.dice.update()
-        
+    
         for player in self.players:
             player.update_move()
-        
+    
+        # Проверяем завершение броска и окончание анимации движения
         if self.dice.result_shown and self.phase == "roll":
             self.steps = self.dice.get_total()
-            self.current_player.move(self.steps)
-            self.phase = "moved"
+            self.phase = "wait_move"  # ждём нажатия кнопки "Идти"
+    
+        # Когда все игроки закончили движение — переходим в фазу "ожидание хода"
+        if self.phase == "moving":
+            all_stopped = all(not player.is_moving() for player in self.players)
+            if all_stopped:
+                self.phase = "moved"
     
     def roll_dice(self):
+        """Бросок кубиков — можно только в фазе roll и если ещё не бросали"""
         if self.phase == "roll" and not self.rolled:
             self.dice.roll()
             self.rolled = True
     
+    def start_movement(self):
+        """Начать движение после броска — вызывается по кнопке 'Идти'"""
+        if self.phase == "wait_move":
+            self.current_player.move(self.steps)
+            self.phase = "moving"
+
     def next_turn(self):
+        """Переход хода — только если никто не двигается"""
+        # Защита: нельзя сменить ход во время анимации
+        if any(player.is_moving() for player in self.players):
+            return
+    
+        if self.phase not in ("moved", "wait_move"):
+            return
+    
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.current_player = self.players[self.current_player_index]
         self.phase = "roll"
         self.rolled = False
-        self.dice.result_shown = False
+        self.dice.reset()  # используем новый метод reset()
         self.steps = 0
     
     def draw(self, screen, map_x, map_y):
@@ -116,28 +147,7 @@ class GameWorld:
         # === Жетоны игроков (исправлено!) ===
         for player in self.players:
             offset = PLAYER_OFFSETS[player.id]
-            
-            if player.moving and player.draw_x is not None:
-                # Анимация — используем координаты анимации
-                px = map_x + player.draw_x + offset[0]
-                py = map_y + player.draw_y + offset[1]
-            else:
-                # Статичная позиция
-                cell = BOARD_CELLS[player.position]
-                px = map_x + cell['x'] + CELL_SIZE // 2 + offset[0]
-                py = map_y + cell['y'] + CELL_SIZE // 2 + offset[1]
-            
-            # Тень
-            pygame.draw.circle(screen, (0, 0, 0), (px + 2, py + 2), 14)
-            # Жетон
-            pygame.draw.circle(screen, player.color, (px, py), 14)
-            pygame.draw.circle(screen, WHITE, (px, py), 14, 2)
-            
-            # Номер
-            font_small = pygame.font.Font(None, 20)
-            text = font_small.render(str(player.id + 1), True, WHITE)
-            text_rect = text.get_rect(center=(px, py))
-            screen.blit(text, text_rect)
+            player.draw(screen, map_x, map_y, offset)
         
         # Панели
         self.draw_turn_panel(screen)
@@ -168,24 +178,36 @@ class GameWorld:
     def draw_dice_area(self, screen):
         dice_x = 30
         dice_y = self.map_y + 100
-        
+    
         self.dice.draw(screen, dice_x, dice_y)
-        
+    
         mouse_pos = pygame.mouse.get_pos()
-        self.roll_button.update(mouse_pos)
-        self.roll_button.draw(screen)
-        
-        if self.phase == "moved":
+    
+        # Кнопка броска — только в фазе roll
+        if self.phase == "roll" and not self.rolled:
+            self.roll_button.update(mouse_pos)
+            self.roll_button.draw(screen)
+    
+        # Кнопка "Идти" — после броска, перед движением
+        if self.phase == "wait_move":
+            self.move_button.update(mouse_pos)
+            self.move_button.draw(screen)
+    
+        # Подсказка
+        if self.phase == "wait_move":
+            hint = self.font.render("Нажмите 'Идти'", True, GOLD)
+            screen.blit(hint, (dice_x, self.move_button.rect.y + 55))
+        elif self.phase == "moved":
             hint = self.font.render("ПРОБЕЛ — следующий ход", True, GOLD)
-            screen.blit(hint, (dice_x, self.roll_button.rect.y + 60))
+            screen.blit(hint, (dice_x, self.roll_button.rect.y + 55))
     
     def draw_cell_info(self, screen):
         cell = BOARD_CELLS[self.selected_cell]
         
         panel_width = 300
-        panel_height = 180
+        panel_height = 150
         panel_x = 20
-        panel_y = self.screen_height - 420
+        panel_y = self.screen_height - 430
         
         panel_surface = pygame.Surface((panel_width, panel_height))
         panel_surface.set_alpha(220)
