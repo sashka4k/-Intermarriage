@@ -5,16 +5,23 @@ class Card:
     """Карта действия"""
     
     TYPES = {
-        "building": {"name": "Постройка", "color": (100, 200, 100), "desc": "Построить здание на клетке"},
-        "teleport": {"name": "Телепорт", "color": (100, 150, 250), "desc": "Переместиться на выбранную клетку"},
-        "points":   {"name": "+100 очков", "color": (250, 200, 50), "desc": "Получить 100 очков"},
+        "fisher_hut": {"name": "Хижина рыбака", "color": (70, 130, 180), "desc": "Построить на воде", "required_tag": "water"},
+        "quarry": {"name": "Карьер", "color": (160, 140, 100), "desc": "Построить в горах", "required_tag": "mountain"},
+        "sawmill": {"name": "Лесопилка", "color": (34, 139, 34), "desc": "Построить в лесу", "required_tag": "forest"},
+        "farm": {"name": "Ферма", "color": (218, 165, 32), "desc": "Построить на равнине", "required_tag": "plain"},
+        "teleport": {"name": "Телепорт", "color": (100, 150, 250), "desc": "Переместиться на клетку"},
+        "points": {"name": "+100 очков", "color": (250, 200, 50), "desc": "Получить 100 очков"},
+        "canyon": {"name": "Каньон", "color": (139, 90, 43), "desc": "Создать каньон на клетке", "is_landscape": True},
     }
     
     def __init__(self, card_type):
         self.type = card_type
-        self.name = Card.TYPES[card_type]["name"]
-        self.color = Card.TYPES[card_type]["color"]
-        self.desc = Card.TYPES[card_type]["desc"]
+        info = Card.TYPES[card_type]
+        self.name = info["name"]
+        self.color = info["color"]
+        self.desc = info["desc"]
+        self.required_tag = info.get("required_tag", None)
+        self.is_landscape = info.get("is_landscape", False)
     
     def get_name(self):
         return self.name

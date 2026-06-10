@@ -33,6 +33,7 @@ class GameWorld:
         
         self.selected_card_index = None
         self.card_played_this_turn = False
+        self.canyon_players = {}  # {player_id: True} — игроки, пропускающие ход
         
         button_width = 200
         button_height = 50
@@ -78,6 +79,7 @@ class GameWorld:
             all_stopped = all(not p.is_moving() for p in self.players)
             if all_stopped:
                 self.phase = "moved"
+                self.apply_cell_effect()
                 if self.current_player.position in CARD_CELLS:
                     self.give_random_card()
         
@@ -151,9 +153,23 @@ class GameWorld:
             return
         if self.phase != "moved":
             return
-        
+    
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.current_player = self.players[self.current_player_index]
+    
+        # Игрок в каньоне — пропускает ход
+        if self.canyon_players.get(self.current_player.id, False):
+            self.canyon_players[self.current_player.id] = False
+            self.phase = "moved"
+            self.rolled = False
+            self.dice.reset()
+            self.steps = 0
+            self.card_played_this_turn = False
+            self.selected_card_index = None
+            self.current_player.hand.visible = False
+            self.update_hand_button_text()
+            return
+    
         self.phase = "roll"
         self.rolled = False
         self.dice.reset()
@@ -256,29 +272,33 @@ class GameWorld:
     def play_card(self, index):
         if self.card_played_this_turn:
             return False
-        
+    
         hand = self.current_player.hand
         if index < 0 or index >= hand.count():
             return False
-        
+    
         card = hand.get_cards()[index]
-        
+    
         if card.type == "points":
             self.current_player.points += 100
-            self.current_player.hand.remove_card(index)
+            hand.remove_card(index)
             self.card_played_this_turn = True
             self.selected_card_index = None
             self.update_hand_button_text()
             return True
-        
+    
         elif card.type == "teleport":
             self.selected_card_index = index
             return "teleport_pending"
-        
-        elif card.type == "building":
+    
+        elif card.required_tag is not None:
             self.selected_card_index = index
             return "building_pending"
-        
+
+        elif card.is_landscape:
+            self.selected_card_index = index
+            return "landscape_pending"
+    
         return False
     
     def confirm_teleport(self, cell_id):
@@ -310,15 +330,29 @@ class GameWorld:
     def confirm_building(self, cell_id):
         if self.selected_card_index is None:
             return False
-        
+    
         hand = self.current_player.hand
         card = hand.get_cards()[self.selected_card_index]
-        
-        if card.type != "building":
+    
+        if card.required_tag is None:
             return False
-        
-        print(f"Постройка на клетке {cell_id}!")
-        
+    
+        cell = BOARD_CELLS[cell_id]
+    
+        # Проверяем тег клетки
+        if card.required_tag not in cell['tags']:
+            return False
+    
+        # Проверяем, что клетка не занята
+        if cell_id in BUILDINGS:
+            return False
+    
+        # Частное или общее
+        if cell_id == self.current_player.position:
+            BUILDINGS[cell_id] = {"building": card.type, "owner": self.current_player.id}
+        else:
+            BUILDINGS[cell_id] = {"building": card.type, "owner": None}
+    
         hand.remove_card(self.selected_card_index)
         self.card_played_this_turn = True
         self.selected_card_index = None
@@ -326,21 +360,69 @@ class GameWorld:
         return True
     
     def give_random_card(self):
-        card_type = random.choice(["building", "teleport", "points"])
+        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "canyon"]
+        card_type = random.choice(["teleport", "points"] + building_types)
         card = Card(card_type)
         self.current_player.hand.add_card(card)
         self.update_hand_button_text()
-    
+
     def give_starting_cards(self):
+        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "canyon"]
         for player in self.players:
             for _ in range(2):
-                card_type = random.choice(["building", "teleport", "points"])
+                card_type = random.choice(["teleport", "points"] + building_types)
                 card = Card(card_type)
                 player.hand.add_card(card)
-        
         self.update_hand_button_text()
     
     # === Отрисовка (делегирует рендереру) ===
     
     def draw(self, screen, map_x, map_y):
         self.renderer.draw(screen, self)
+    
+    def apply_cell_effect(self):
+        """Эффект клетки после остановки"""
+        cell = BOARD_CELLS[self.current_player.position]
+        tags = cell['tags']
+    
+        # Проверяем ландшафт клетки
+        landscape = LANDSCAPES.get(self.current_player.position)
+
+        if landscape == "canyon":
+            self.canyon_players[self.current_player.id] = True
+            return
+    
+        building = BUILDINGS.get(self.current_player.position)
+        if building:
+            if building['owner'] is not None:
+                self.players[building['owner']].points += BUILDING_TYPES[building['building']]['profit']
+            else:
+                for p in self.players:
+                    p.points += 20
+    
+    def confirm_landscape(self, cell_id):
+        """Наложить ландшафт (каньон) на клетку"""
+        if self.selected_card_index is None:
+            return False
+    
+        hand = self.current_player.hand
+        card = hand.get_cards()[self.selected_card_index]
+    
+        if not card.is_landscape:
+            return False
+    
+        cell = BOARD_CELLS[cell_id]
+    
+        # Нельзя накладывать ландшафт поверх другого ландшафта или постройки
+        if cell_id in LANDSCAPES:
+            return False
+        if cell_id in BUILDINGS:
+            return False
+    
+        LANDSCAPES[cell_id] = card.type  # "canyon"
+    
+        hand.remove_card(self.selected_card_index)
+        self.card_played_this_turn = True
+        self.selected_card_index = None
+        self.update_hand_button_text()
+        return True

@@ -36,6 +36,9 @@ class Renderer:
         
         # Слой 2: Путь
         self.draw_steps(screen)
+
+        # Слой 2.5: Ландшафт и здания
+        self.draw_landscape_and_buildings(screen)
         
         # Слой 3: Сетка и выделение
         self.draw_grid(screen, game_world.selected_cell)
@@ -55,7 +58,7 @@ class Renderer:
         self.draw_players_panel(screen, game_world)
         
         if game_world.selected_cell is not None:
-            self.draw_cell_info(screen, game_world.selected_cell)
+            self.draw_cell_info(screen, game_world.selected_cell, game_world.players)
     
     # === Слои ===
     
@@ -184,29 +187,60 @@ class Renderer:
             hint_rect = hint.get_rect(center=(self.screen_width // 2, self.screen_height - 270))
             screen.blit(hint, hint_rect)
     
-    def draw_cell_info(self, screen, selected_cell):
+    def draw_cell_info(self, screen, selected_cell, players=None):
         cell = BOARD_CELLS[selected_cell]
-        
+    
         panel_width = 300
-        panel_height = 150
+        panel_height = 170
         panel_x = 20
         panel_y = self.screen_height - 430
-        
+    
         panel_surface = pygame.Surface((panel_width, panel_height))
         panel_surface.set_alpha(220)
         panel_surface.fill((30, 30, 50))
         screen.blit(panel_surface, (panel_x, panel_y))
         pygame.draw.rect(screen, GOLD, (panel_x, panel_y, panel_width, panel_height), 2)
-        
+    
         y_offset = panel_y + 10
         title = self.font_title.render(f"Клетка: {cell['name']}", True, GOLD)
         screen.blit(title, (panel_x + 10, y_offset))
-        
+    
         y_offset += 40
-        for line in [f"Тип: {cell['type']}", f"Связи: {cell['PATH']}"]:
-            text = self.font.render(line, True, WHITE)
-            screen.blit(text, (panel_x + 10, y_offset))
+    
+        # Теги
+        tags_text = ", ".join(cell['tags'])
+        type_text = self.font.render(f"Теги: {tags_text}", True, WHITE)
+        screen.blit(type_text, (panel_x + 10, y_offset))
+        y_offset += 25
+
+        # Ландшафт
+        landscape = LANDSCAPES.get(selected_cell)
+        if landscape:
+            landscape_name = "Каньон" if landscape == "canyon" else landscape
+            land_text = self.font.render(f"Ландшафт: {landscape_name}", True, (200, 150, 100))
+            screen.blit(land_text, (panel_x + 10, y_offset))
             y_offset += 25
+    
+        # Постройка
+        building = BUILDINGS.get(selected_cell)
+        if building:
+            bname = BUILDING_TYPES[building['building']]['name']
+            build_text = self.font.render(f"Постройка: {bname}", True, WHITE)
+            screen.blit(build_text, (panel_x + 10, y_offset))
+            y_offset += 25
+        
+            if building['owner'] is not None:
+                owner_name = players[building['owner']].name if players else f"Игрок {building['owner'] + 1}"
+                owner_text = self.font.render(f"Владелец: {owner_name}", True, WHITE)
+            else:
+                owner_text = self.font.render("Общее здание", True, WHITE)
+            screen.blit(owner_text, (panel_x + 10, y_offset))
+            y_offset += 25
+    
+        # Связи
+        connections = [str(p) for p in cell['PATH'] if p != -1]
+        conn_text = self.font.render(f"Связи: {', '.join(connections) if connections else 'нет'}", True, WHITE)
+        screen.blit(conn_text, (panel_x + 10, y_offset))
     
     def draw_players_panel(self, screen, game_world):
         panel_width = 300
@@ -236,3 +270,40 @@ class Renderer:
                 text = self.font.render(f"  {player.name}: {player.points} очк.", True, WHITE)
             screen.blit(text, (panel_x + 45, y_offset))
             y_offset += 28
+    
+    def draw_landscape_and_buildings(self, screen):
+        for cell_id, cell in BOARD_CELLS.items():
+            cell_x = self.map_x + cell['x']
+            cell_y = self.map_y + cell['y']
+            cx = cell_x + CELL_SIZE // 2
+            cy = cell_y + CELL_SIZE // 2
+        
+            # Ландшафт (каньон)
+            landscape = LANDSCAPES.get(cell_id)
+            if landscape == "canyon":
+                rect = pygame.Rect(cell_x + 20, cell_y + 20, CELL_SIZE - 40, CELL_SIZE - 40)
+                pygame.draw.rect(screen, (139, 90, 43), rect, border_radius=5)
+                pygame.draw.rect(screen, (100, 60, 20), rect, 3, border_radius=5)
+                label = self.font_small.render("⛔", True, WHITE)
+                label_rect = label.get_rect(center=(cx, cy))
+                screen.blit(label, label_rect)
+        
+            # Постройки
+            building = BUILDINGS.get(cell_id)
+            if building:
+                btype = building['building']
+                bcolor = BUILDING_TYPES[btype]['color']
+            
+                rect = pygame.Rect(cell_x + 15, cell_y + 15, CELL_SIZE - 30, CELL_SIZE - 30)
+                pygame.draw.rect(screen, bcolor, rect, border_radius=8)
+            
+                if building['owner'] is not None:
+                    owner_color = PLAYER_COLORS[building['owner']]
+                    pygame.draw.rect(screen, owner_color, rect, 3, border_radius=8)
+                    label = self.font_small.render("Ч", True, WHITE)
+                else:
+                    pygame.draw.rect(screen, GOLD, rect, 2, border_radius=8)
+                    label = self.font_small.render("О", True, BLACK)
+            
+                label_rect = label.get_rect(center=(cx, cy))
+                screen.blit(label, label_rect)

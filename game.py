@@ -83,6 +83,8 @@ class Game:
                                     pass
                                 elif result == "building_pending":
                                     pass
+                                elif result == "landscape_pending":
+                                    pass
                                 continue
                         
                         # Если ждём телепорт или постройку — клик по карте
@@ -94,8 +96,10 @@ class Game:
                                     card = hand.get_cards()[self.game_world.selected_card_index]
                                     if card.type == "teleport":
                                         self.game_world.confirm_teleport(cell_id)
-                                    elif card.type == "building":
+                                    elif card.required_tag is not None:
                                         self.game_world.confirm_building(cell_id)
+                                    elif card.is_landscape:
+                                        self.game_world.confirm_landscape(cell_id)
                                 continue
                         
                         # Кнопка просмотра руки
@@ -183,3 +187,7 @@ class Game:
         self.game_world = GameWorld(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, 
                                      self.map_x, self.map_y, players)
         self.game_world.give_starting_cards()
+
+        # ТЕСТ: добавить каньон на клетку 0 (стартовая)
+        from settings import LANDSCAPES
+        LANDSCAPES[0] = "canyon"
