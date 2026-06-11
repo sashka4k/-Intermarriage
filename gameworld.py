@@ -2,7 +2,7 @@ import pygame
 import random
 import math
 from settings import *
-from ui import Button
+from ui import ImageButton
 from card import Card
 from renderer import Renderer
 from dice import Dice
@@ -33,30 +33,36 @@ class GameWorld:
         
         self.selected_card_index = None
         self.card_played_this_turn = False
-        self.canyon_players = {}  # {player_id: True} — игроки, пропускающие ход
+        self.canyon_players = {}
         
-        button_width = 200
-        button_height = 50
+        button_width = 260
+        button_height = 65
         button_x = 30
         button_y = self.map_y + 170
         
-        self.roll_button = Button(
+        # Кнопка "Бросить кубики" с изображением
+        self.roll_button = ImageButton(
             button_x, button_y,
             button_width, button_height,
-            "Бросить кубики", BLUE, LIGHT_BLUE
+            "Prefabs/Pictures/button_roll.png",
+            "Prefabs/Pictures/button_roll_hover.png"
         )
         
-        self.move_button = Button(
+        # Кнопка "Идти" с изображением
+        self.move_button = ImageButton(
             button_x, button_y,
             button_width, button_height,
-            "Идти", BLUE, LIGHT_BLUE
+            "Prefabs/Pictures/button_move.png",
+            "Prefabs/Pictures/button_move_hover.png"
         )
         
-        self.hand_button = Button(
+        # Кнопка "Карты" с изображением
+        self.hand_button = ImageButton(
             30,
-            self.map_y + 230,
-            200, 40,
-            "Карты (0)", BLUE, LIGHT_BLUE
+            self.map_y + 250,
+            260, 55,
+            "Prefabs/Pictures/button_hand.png",
+            "Prefabs/Pictures/button_hand_hover.png"
         )
         
         self.renderer = Renderer(screen_width, screen_height, map_x, map_y)
@@ -157,7 +163,6 @@ class GameWorld:
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
         self.current_player = self.players[self.current_player_index]
     
-        # Игрок в каньоне — пропускает ход
         if self.canyon_players.get(self.current_player.id, False):
             self.canyon_players[self.current_player.id] = False
             self.phase = "moved"
@@ -267,7 +272,8 @@ class GameWorld:
     
     def update_hand_button_text(self):
         count = self.current_player.hand.count()
-        self.hand_button.text = f"Карты ({count})"
+        #Саня: пока что уберу потому что не отображается на кнопках кошличаество карт 
+        #self.hand_button.text = f"Карты ({count})" 
     
     def play_card(self, index):
         if self.card_played_this_turn:
@@ -311,10 +317,9 @@ class GameWorld:
         if card.type != "teleport":
             return False
     
-        # Проверка: нельзя телепортироваться на клетку-тупик (PATH = [-1])
         cell = BOARD_CELLS[cell_id]
         if cell['PATH'] == [-1]:
-            return False  # просто игнорируем клик, игрок остаётся на месте
+            return False
     
         self.current_player.position = cell_id
         self.current_player.draw_x = None
@@ -339,19 +344,41 @@ class GameWorld:
     
         cell = BOARD_CELLS[cell_id]
     
-        # Проверяем тег клетки
         if card.required_tag not in cell['tags']:
             return False
     
-        # Проверяем, что клетка не занята
         if cell_id in BUILDINGS:
             return False
     
-        # Частное или общее
         if cell_id == self.current_player.position:
             BUILDINGS[cell_id] = {"building": card.type, "owner": self.current_player.id}
         else:
             BUILDINGS[cell_id] = {"building": card.type, "owner": None}
+    
+        hand.remove_card(self.selected_card_index)
+        self.card_played_this_turn = True
+        self.selected_card_index = None
+        self.update_hand_button_text()
+        return True
+    
+    def confirm_landscape(self, cell_id):
+        if self.selected_card_index is None:
+            return False
+    
+        hand = self.current_player.hand
+        card = hand.get_cards()[self.selected_card_index]
+    
+        if not card.is_landscape:
+            return False
+    
+        cell = BOARD_CELLS[cell_id]
+    
+        if cell_id in LANDSCAPES:
+            return False
+        if cell_id in BUILDINGS:
+            return False
+    
+        LANDSCAPES[cell_id] = card.type
     
         hand.remove_card(self.selected_card_index)
         self.card_played_this_turn = True
@@ -375,17 +402,10 @@ class GameWorld:
                 player.hand.add_card(card)
         self.update_hand_button_text()
     
-    # === Отрисовка (делегирует рендереру) ===
-    
-    def draw(self, screen, map_x, map_y):
-        self.renderer.draw(screen, self)
-    
     def apply_cell_effect(self):
-        """Эффект клетки после остановки"""
         cell = BOARD_CELLS[self.current_player.position]
         tags = cell['tags']
     
-        # Проверяем ландшафт клетки
         landscape = LANDSCAPES.get(self.current_player.position)
 
         if landscape == "canyon":
@@ -400,29 +420,7 @@ class GameWorld:
                 for p in self.players:
                     p.points += 20
     
-    def confirm_landscape(self, cell_id):
-        """Наложить ландшафт (каньон) на клетку"""
-        if self.selected_card_index is None:
-            return False
+    # === Отрисовка ===
     
-        hand = self.current_player.hand
-        card = hand.get_cards()[self.selected_card_index]
-    
-        if not card.is_landscape:
-            return False
-    
-        cell = BOARD_CELLS[cell_id]
-    
-        # Нельзя накладывать ландшафт поверх другого ландшафта или постройки
-        if cell_id in LANDSCAPES:
-            return False
-        if cell_id in BUILDINGS:
-            return False
-    
-        LANDSCAPES[cell_id] = card.type  # "canyon"
-    
-        hand.remove_card(self.selected_card_index)
-        self.card_played_this_turn = True
-        self.selected_card_index = None
-        self.update_hand_button_text()
-        return True
+    def draw(self, screen, map_x, map_y):
+        self.renderer.draw(screen, self)

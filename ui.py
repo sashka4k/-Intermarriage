@@ -27,6 +27,49 @@ class Button:
             return self.rect.collidepoint(pos)
         return False
 
+class ImageButton:
+    """Кнопка с изображением вместо фона (без текста)"""
+    def __init__(self, x, y, width, height, image_path, hover_image_path=None):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.is_hovered = False
+        
+        try:
+            self.image = pygame.image.load(image_path)
+            self.image = pygame.transform.scale(self.image, (width, height))
+        except:
+            self.image = None
+        
+        if hover_image_path:
+            try:
+                self.hover_image = pygame.image.load(hover_image_path)
+                self.hover_image = pygame.transform.scale(self.hover_image, (width, height))
+            except:
+                self.hover_image = None
+        else:
+            self.hover_image = None
+    
+    def draw(self, screen):
+        if self.is_hovered and self.hover_image:
+            current_image = self.hover_image
+        elif self.image:
+            current_image = self.image
+        else:
+            color = (100, 100, 200) if self.is_hovered else (50, 50, 100)
+            pygame.draw.rect(screen, color, self.rect, border_radius=10)
+            pygame.draw.rect(screen, GOLD, self.rect, 2, border_radius=10)
+            current_image = None
+        
+        if current_image:
+            screen.blit(current_image, (self.rect.x, self.rect.y))
+    
+    def update(self, pos):
+        self.is_hovered = self.rect.collidepoint(pos)
+    
+    def is_clicked(self, mouse_pos, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            return self.rect.collidepoint(mouse_pos)
+        return False
+
 
 class InputBox:
     """Поле ввода текста"""
