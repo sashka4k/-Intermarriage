@@ -135,6 +135,8 @@ class Game:
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_SPACE:
                             self.game_world.next_turn()
+                            if self.game_world.is_game_over():
+                                self.end_game()
                         elif event.key == pygame.K_ESCAPE:
                             self.state = "pause"
                         elif event.key == pygame.K_TAB:
@@ -188,13 +190,13 @@ class Game:
         sys.exit()
 
     def end_game(self):
-        """Завершение игры — сохранить результаты и показать таблицу"""
         if not self.game_world:
             return
     
         for player in self.game_world.players:
             self.rating_table.add_result(player.name, player.points)
     
+        self.winners = self.game_world.get_winners()
         self.state = "game_over"
     
     def start_new_game(self, names):
@@ -208,6 +210,6 @@ class Game:
         self.game_world.give_starting_cards()
     
     def draw_game_over_screen(self):
-        """Экран конца игры — делегирует рендереру"""
         if self.game_world:
-            self.game_world.renderer.draw_game_over_screen(self.screen, self.rating_table)
+            winners = getattr(self, 'winners', None)
+            self.game_world.renderer.draw_game_over_screen(self.screen, self.rating_table, winners)

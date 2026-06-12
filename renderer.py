@@ -50,7 +50,7 @@ class Renderer:
         self.draw_fork_arrows(screen, game_world)
         
         # Интерфейс
-        self.draw_turn_panel(screen, game_world.current_player)
+        self.draw_turn_panel(screen, game_world.current_player, game_world.turn_count, game_world.total_turns)
         self.draw_dice_area(screen, game_world)
         self.draw_hand_button(screen, game_world)
         self.draw_hand(screen, game_world)
@@ -120,7 +120,7 @@ class Renderer:
     
     # === Панели интерфейса ===
     
-    def draw_turn_panel(self, screen, current_player):
+    def draw_turn_panel(self, screen, current_player, turn_count=0, total_turns=0):
         panel_width = 300
         panel_height = 60
         panel_x = 20
@@ -136,7 +136,11 @@ class Renderer:
             f"Ход: {current_player.name}",
             True, current_player.color
         )
-        screen.blit(turn_text, (panel_x + 10, panel_y + 15))
+        screen.blit(turn_text, (panel_x + 10, panel_y + 10))
+
+        # Счётчик раундов
+        round_text = self.font.render(f"Раунд: {turn_count}/{total_turns}", True, GOLD)
+        screen.blit(round_text, (panel_x + 10, panel_y + 38))
     
     def draw_dice_area(self, screen, game_world):
         dice_x = 30
@@ -308,27 +312,45 @@ class Renderer:
                 label_rect = label.get_rect(center=(cx, cy))
                 screen.blit(label, label_rect)
     
-    def draw_game_over_screen(self, screen, rating_table):
-        """Экран конца игры с таблицей рекордов"""
+    def draw_game_over_screen(self, screen, rating_table, winners=None):
         overlay = pygame.Surface((self.screen_width, self.screen_height))
         overlay.set_alpha(200)
         overlay.fill(BLACK)
         screen.blit(overlay, (0, 0))
     
         font_title = pygame.font.Font(None, 72)
+        font_winner = pygame.font.Font(None, 48)
         font_record = pygame.font.Font(None, 36)
         font_hint = pygame.font.Font(None, 28)
     
         title = font_title.render("ИГРА ОКОНЧЕНА", True, GOLD)
-        title_rect = title.get_rect(center=(self.screen_width // 2, 60))
+        title_rect = title.get_rect(center=(self.screen_width // 2, 40))
         screen.blit(title, title_rect)
+    
+        # Победители
+        if winners:
+            if len(winners) == len(rating_table.records) and len(winners) > 1:
+                # Все игроки в winners с одинаковыми очками — ничья
+                winner_text = "НИЧЬЯ!"
+                winner_color = WHITE
+            elif len(winners) == 1:
+                winner_text = f"Победитель: {winners[0].name} ({winners[0].points} очк.)"
+                winner_color = winners[0].color
+            else:
+                names = ", ".join(w.name for w in winners)
+                winner_text = f"Победители: {names} ({winners[0].points} очк.)"
+                winner_color = GOLD
         
+            winner_render = font_winner.render(winner_text, True, winner_color)
+            winner_rect = winner_render.get_rect(center=(self.screen_width // 2, 100))
+            screen.blit(winner_render, winner_rect)
+    
         subtitle = font_record.render("Таблица рекордов:", True, WHITE)
-        subtitle_rect = subtitle.get_rect(center=(self.screen_width // 2, 130))
+        subtitle_rect = subtitle.get_rect(center=(self.screen_width // 2, 150))
         screen.blit(subtitle, subtitle_rect)
-        
+    
         records = rating_table.get_records()
-        start_y = 180
+        start_y = 190
         
         header_name = font_record.render("Игрок", True, GOLD)
         header_points = font_record.render("Очки", True, GOLD)
@@ -352,7 +374,7 @@ class Renderer:
         
         if not records:
             empty_text = font_record.render("Нет рекордов", True, GRAY)
-            empty_rect = empty_text.get_rect(center=(self.screen_width // 2, start_y + 80))
+            empty_rect = empty_text.get_rect(center=(self.screen_width // 2, start_y + 40))
             screen.blit(empty_text, empty_rect)
         
         hint = font_hint.render("Кликните или нажмите любую клавишу для выхода в меню", True, GRAY)

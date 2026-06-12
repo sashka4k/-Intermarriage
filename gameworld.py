@@ -35,6 +35,9 @@ class GameWorld:
         self.card_played_this_turn = False
         self.canyon_players = {}
 
+        self.turn_count = 1  # счётчик раундов
+        self.total_turns = MAX_TURNS
+
         button_width = 260
         button_height = 65
         button_x = 30
@@ -167,6 +170,12 @@ class GameWorld:
             return
     
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
+        # Если круг завершён (все игроки походили) — увеличиваем счётчик
+        if self.current_player_index == 0:
+            if self.turn_count >= self.total_turns:
+                self.turn_count += 1  # финальное значение для отображения n/n
+            else:
+                self.turn_count += 1
         self.current_player = self.players[self.current_player_index]
     
         if self.canyon_players.get(self.current_player.id, False):
@@ -417,3 +426,12 @@ class GameWorld:
     
     def draw(self, screen, map_x, map_y):
         self.renderer.draw(screen, self)
+    
+    def is_game_over(self):
+        return self.turn_count > self.total_turns
+    
+    def get_winners(self):
+        """Возвращает список победителей (по максимальным очкам)"""
+        max_points = max(p.points for p in self.players)
+        winners = [p for p in self.players if p.points == max_points]
+        return winners

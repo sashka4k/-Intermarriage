@@ -140,3 +140,5 @@ LANDSCAPES = {}
 
 # Каньон — параметры
 CANYON_STOP_TURNS = 1  # сколько ходов пропускает игрок
+
+MAX_TURNS = 10
