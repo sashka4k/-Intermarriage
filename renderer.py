@@ -8,15 +8,17 @@ class Renderer:
     def __init__(self, screen_width, screen_height, map_x, map_y):
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.map_x = map_x
-        self.map_y = map_y
+        
+        # КАРТА НА КООРДИНАТАХ 688, 96
+        self.map_x = 688
+        self.map_y = 96
         
         # Шрифты
         self.font = pygame.font.Font(None, 28)
         self.font_title = pygame.font.Font(None, 36)
         self.font_small = pygame.font.Font(None, 20)
         
-        # Изображения
+        # Изображения карты
         try:
             self.map_image = pygame.image.load(MAP_WITHOUT_STEPS)
             self.map_image = pygame.transform.scale(self.map_image, (MAP_WIDTH, MAP_HEIGHT))
@@ -28,9 +30,23 @@ class Renderer:
             self.steps_image = pygame.transform.scale(self.steps_image, (MAP_WIDTH, MAP_HEIGHT))
         except:
             self.steps_image = None
+        
+        # ЗАДНИЙ ФОН (1920x1080) - вместо чёрного экрана
+        try:
+            self.background = pygame.image.load("Prefabs/Pictures/game_background.png")
+            self.background = pygame.transform.scale(self.background, (self.screen_width, self.screen_height))
+        except:
+            self.background = None
     
     def draw(self, screen, game_world):
         """Главный метод отрисовки всего игрового мира"""
+        
+        # РИСУЕМ ЗАДНИЙ ФОН (на весь экран)
+        if self.background:
+            screen.blit(self.background, (0, 0))
+        else:
+            screen.fill(BLACK)
+        
         # Слой 1: Карта
         self.draw_map(screen)
         
@@ -330,7 +346,6 @@ class Renderer:
         # Победители
         if winners:
             if len(winners) == len(rating_table.records) and len(winners) > 1:
-                # Все игроки в winners с одинаковыми очками — ничья
                 winner_text = "НИЧЬЯ!"
                 winner_color = WHITE
             elif len(winners) == 1:

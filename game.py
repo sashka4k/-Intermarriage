@@ -23,8 +23,9 @@ class Game:
         self.clock = pygame.time.Clock()
         self.running = True
         
-        self.map_x = self.SCREEN_WIDTH - MAP_WIDTH - MAP_MARGIN_RIGHT
-        self.map_y = MAP_MARGIN_TOP
+        # КАРТА НА КООРДИНАТАХ 688, 96
+        self.map_x = 688
+        self.map_y = 96
         
         self.state = "menu"
         

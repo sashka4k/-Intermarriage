@@ -35,15 +35,17 @@ class GameWorld:
         self.card_played_this_turn = False
         self.canyon_players = {}
 
-        self.turn_count = 1  # счётчик раундов
+        self.turn_count = 1
         self.total_turns = MAX_TURNS
 
-        button_width = 260
-        button_height = 65
-        button_x = 30
-        button_y = self.map_y + 170
+        # НОВЫЕ КООРДИНАТЫ КНОПОК: x = 185, y = 293
+        button_width = 320
+        button_height = 80
+        button_x = 185
+        button_y = 293
+        button_spacing = 20
         
-        # Кнопка "Бросить кубики" с изображением
+        # Кнопка "Бросить кубики"
         self.roll_button = ImageButton(
             button_x, button_y,
             button_width, button_height,
@@ -51,7 +53,7 @@ class GameWorld:
             "Prefabs/Pictures/button_roll_hover.png"
         )
         
-        # Кнопка "Идти" с изображением
+        # Кнопка "Идти"
         self.move_button = ImageButton(
             button_x, button_y,
             button_width, button_height,
@@ -59,11 +61,11 @@ class GameWorld:
             "Prefabs/Pictures/button_move_hover.png"
         )
         
-        # Кнопка "Карты" с изображением
+        # Кнопка "Карты" (ниже на высоту + отступ)
         self.hand_button = ImageButton(
-            30,
-            self.map_y + 250,
-            260, 55,
+            button_x,
+            button_y + button_height + button_spacing,
+            button_width, button_height,
             "Prefabs/Pictures/button_hand.png",
             "Prefabs/Pictures/button_hand_hover.png"
         )
@@ -95,7 +97,6 @@ class GameWorld:
         if self.phase == "step_moving":
             all_stopped = all(not p.is_moving() for p in self.players)
             if all_stopped:
-                # Один шаг завершён — пробуем следующий
                 self.do_step()
     
     # === Карта и клетки ===
@@ -137,7 +138,6 @@ class GameWorld:
         self.do_step()
 
     def do_step(self):
-        """Сделать один шаг. Если развилка — остановиться и ждать выбора."""
         if self.steps_remaining <= 0:
             self.phase = "moving"
             return
@@ -151,13 +151,11 @@ class GameWorld:
             return
         
         if len(valid_paths) == 1:
-            # Один путь — идём сразу
             target = valid_paths[0]
             self.current_player.start_move([current, target])
             self.steps_remaining -= 1
             self.phase = "step_moving"
         else:
-            # Развилка — ждём выбора
             self.fork_cell = current
             self.fork_options = valid_paths
             self.calculate_fork_arrows()
@@ -170,10 +168,9 @@ class GameWorld:
             return
     
         self.current_player_index = (self.current_player_index + 1) % len(self.players)
-        # Если круг завершён (все игроки походили) — увеличиваем счётчик
         if self.current_player_index == 0:
             if self.turn_count >= self.total_turns:
-                self.turn_count += 1  # финальное значение для отображения n/n
+                self.turn_count += 1
             else:
                 self.turn_count += 1
         self.current_player = self.players[self.current_player_index]
@@ -242,7 +239,6 @@ class GameWorld:
         if target_id not in self.fork_options:
             return
     
-        # Делаем шаг в выбранном направлении
         self.current_player.start_move([self.fork_cell, target_id])
         self.steps_remaining -= 1
         
@@ -274,8 +270,6 @@ class GameWorld:
     
     def update_hand_button_text(self):
         count = self.current_player.hand.count()
-        #Саня: пока что уберу потому что не отображается на кнопках кошличаество карт 
-        #self.hand_button.text = f"Карты ({count})" 
     
     def play_card(self, index):
         if self.card_played_this_turn:
@@ -431,7 +425,6 @@ class GameWorld:
         return self.turn_count > self.total_turns
     
     def get_winners(self):
-        """Возвращает список победителей (по максимальным очкам)"""
         max_points = max(p.points for p in self.players)
         winners = [p for p in self.players if p.points == max_points]
         return winners
