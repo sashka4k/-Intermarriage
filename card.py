@@ -36,6 +36,9 @@ class CardHand:
         self.cards = []
         self.max_cards = max_cards
         self.visible = False  # показывать ли руку
+        self.font_name = pygame.font.Font(None, 20)
+        self.font_desc = pygame.font.Font(None, 16)
+        self.font_index = pygame.font.Font(None, 24)
     
     def add_card(self, card):
         """Добавить карту в руку"""
@@ -76,14 +79,7 @@ class CardHand:
         y = screen_height - card_height - 40
         
         # Полупрозрачный фон для всей руки
-        panel = pygame.Surface((screen_width, card_height + 60))
-        panel.set_alpha(180)
-        panel.fill((20, 20, 40))
-        screen.blit(panel, (0, y - 20))
-        
-        font_name = pygame.font.Font(None, 20)
-        font_desc = pygame.font.Font(None, 16)
-        font_index = pygame.font.Font(None, 24)
+        pygame.draw.rect(screen, (20, 20, 40), (0, y - 20, screen_width, card_height + 60))
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
@@ -102,11 +98,11 @@ class CardHand:
             pygame.draw.rect(screen, WHITE, card_rect, 2, border_radius=12)
             
             # Номер карты
-            idx_text = font_index.render(str(i + 1), True, WHITE)
+            idx_text = self.font_index.render(str(i + 1), True, WHITE)
             screen.blit(idx_text, (cx + 10, cy + 8))
             
             # Название
-            name_text = font_name.render(card.name, True, WHITE)
+            name_text = self.font_name.render(card.name, True, WHITE)
             name_rect = name_text.get_rect(center=(cx + card_width // 2, cy + 50))
             screen.blit(name_text, name_rect)
             
@@ -120,19 +116,19 @@ class CardHand:
                 else:
                     line2 += word + " "
             
-            desc1 = font_desc.render(line1.strip(), True, WHITE)
+            desc1 = self.font_desc.render(line1.strip(), True, WHITE)
             desc1_rect = desc1.get_rect(center=(cx + card_width // 2, cy + 100))
             screen.blit(desc1, desc1_rect)
             
             if line2:
-                desc2 = font_desc.render(line2.strip(), True, WHITE)
+                desc2 = self.font_desc.render(line2.strip(), True, WHITE)
                 desc2_rect = desc2.get_rect(center=(cx + card_width // 2, cy + 120))
                 screen.blit(desc2, desc2_rect)
             
             # Иконка-плейсхолдер
             icon_rect = pygame.Rect(cx + card_width // 2 - 25, cy + 140, 50, 50)
             pygame.draw.rect(screen, WHITE, icon_rect, 2, border_radius=8)
-            icon_label = font_name.render("?", True, WHITE)
+            icon_label = self.font_name.render("?", True, WHITE)
             icon_label_rect = icon_label.get_rect(center=icon_rect.center)
             screen.blit(icon_label, icon_label_rect)
     

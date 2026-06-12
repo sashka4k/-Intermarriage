@@ -123,10 +123,35 @@ BUILDINGS = {}
 
 # Типы зданий
 BUILDING_TYPES = {
-    "fisher_hut": {"name": "Хижина рыбака", "required_tag": "water", "profit": 50, "color": (70, 130, 180)},
-    "quarry": {"name": "Карьер", "required_tag": "mountain", "profit": 50, "color": (160, 140, 100)},
-    "sawmill": {"name": "Лесопилка", "required_tag": "forest", "profit": 50, "color": (34, 139, 34)},
-    "farm": {"name": "Ферма", "required_tag": "plain", "profit": 50, "color": (218, 165, 32)},
+    "fisher_hut": {
+        "name": "Хижина рыбака",
+        "required_tag": "water",
+        "color": (70, 130, 180),
+        "owner_matter": 4,      # владелец при попадании любого
+        "visitor_matter": 2,    # гость при попадании
+    },
+    "quarry": {
+        "name": "Карьер",
+        "required_tag": "mountain",
+        "color": (160, 140, 100),
+        "owner_matter": 5,      # владелец каждый круг
+        "visitor_matter": 0,    # гости ничего
+    },
+    "sawmill": {
+        "name": "Лесопилка",
+        "required_tag": "forest",
+        "color": (34, 139, 34),
+        "owner_matter": 2,      # владелец при попадании
+        "visitor_matter": 2,    # гость при попадании (всем поровну)
+    },
+    "farm": {
+        "name": "Ферма",
+        "required_tag": "plain",
+        "color": (218, 165, 32),
+        "owner_matter": 1.5,    # владелец при своём попадании
+        "visitor_matter": 1,    # гость при попадании
+        "owner_passive": 0.5,   # владелец когда гость попадает
+    },
 }
 
 # Клетки, на которых выдаются карты

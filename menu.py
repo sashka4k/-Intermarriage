@@ -113,8 +113,8 @@ class PlayerSetupMenu:
         
         input_width = 380
         input_height = 55
-        start_y = screen_height // 2 - 150
-        spacing = 75
+        start_y = screen_height // 2 - 80
+        spacing = 90
         
         player_labels = [
             "Игрок 1 (синий)",

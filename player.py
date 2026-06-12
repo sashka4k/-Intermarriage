@@ -10,6 +10,7 @@ class Player:
         self.position = START_CELL  # все начинают со старта
         self.money = 0
         self.points = 0
+        self.matter = 0  # материя
         self.hand = None
         
         # Анимация

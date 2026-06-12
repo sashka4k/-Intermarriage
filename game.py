@@ -186,11 +186,16 @@ class Game:
             
             pygame.display.flip()
             self.clock.tick(60)
+
+            fps = self.clock.get_fps()
+            if int(fps) < 50:
+                print(f"FPS: {fps:.0f}")
         
         pygame.quit()
         sys.exit()
 
     def end_game(self):
+        """Завершение игры — сохранить результаты и показать таблицу"""
         if not self.game_world:
             return
     

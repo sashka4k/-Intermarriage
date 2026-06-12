@@ -103,6 +103,7 @@ class GameWorld:
     
     def select_cell(self, cell_id):
         self.selected_cell = cell_id
+        self.renderer.static_needs_update = True
     
     def get_cell_at_mouse(self, mouse_pos):
         mx, my = mouse_pos
@@ -355,6 +356,7 @@ class GameWorld:
         self.card_played_this_turn = True
         self.selected_card_index = None
         self.update_hand_button_text()
+        self.renderer.static_needs_update = True
         return True
     
     def confirm_landscape(self, cell_id):
@@ -380,6 +382,7 @@ class GameWorld:
         self.card_played_this_turn = True
         self.selected_card_index = None
         self.update_hand_button_text()
+        self.renderer.static_needs_update = True
         return True
     
     def give_random_card(self):
@@ -400,21 +403,46 @@ class GameWorld:
     
     def apply_cell_effect(self):
         cell = BOARD_CELLS[self.current_player.position]
-        tags = cell['tags']
     
         landscape = LANDSCAPES.get(self.current_player.position)
-
         if landscape == "canyon":
             self.canyon_players[self.current_player.id] = True
             return
     
         building = BUILDINGS.get(self.current_player.position)
-        if building:
-            if building['owner'] is not None:
-                self.players[building['owner']].points += BUILDING_TYPES[building['building']]['profit']
+        if not building:
+            return
+    
+        btype = building['building']
+        owner_id = building['owner']
+        current_id = self.current_player.id
+    
+        # Карьер — владелец получает 5 материи каждый круг
+        if btype == "quarry":
+            if owner_id is not None:
+                self.players[owner_id].matter += 5
+    
+        # Хижина рыбака
+        elif btype == "fisher_hut":
+            if owner_id is not None:
+                self.players[owner_id].matter += 4
+            if current_id != owner_id:
+                self.current_player.matter += 2
+    
+        # Лесопилка
+        elif btype == "sawmill":
+            self.current_player.matter += 2
+            if owner_id is not None and current_id != owner_id:
+                self.players[owner_id].matter += 2
+    
+        # Ферма
+        elif btype == "farm":
+            if current_id == owner_id:
+                self.current_player.matter += 1.5
             else:
-                for p in self.players:
-                    p.points += 20
+                self.current_player.matter += 1
+                if owner_id is not None:
+                    self.players[owner_id].matter += 0.5
     
     # === Отрисовка ===
     
@@ -428,3 +456,6 @@ class GameWorld:
         max_points = max(p.points for p in self.players)
         winners = [p for p in self.players if p.points == max_points]
         return winners
+    
+    def mark_static_dirty(self):
+        self.renderer.static_needs_update = True
