@@ -103,12 +103,12 @@ class Renderer:
             adx = arrow['dx']
             ady = arrow['dy']
             
-            arrow_size = 30
+            arrow_size = 45
             tip_x = ax + adx * arrow_size
             tip_y = ay + ady * arrow_size
             
-            wing_x = -ady * 10
-            wing_y = adx * 10
+            wing_x = -ady * 15
+            wing_y = adx * 15
             
             points = [
                 (tip_x, tip_y),

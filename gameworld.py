@@ -34,7 +34,7 @@ class GameWorld:
         self.selected_card_index = None
         self.card_played_this_turn = False
         self.canyon_players = {}
-        
+
         button_width = 260
         button_height = 65
         button_x = 30
@@ -88,11 +88,12 @@ class GameWorld:
                 self.apply_cell_effect()
                 if self.current_player.position in CARD_CELLS:
                     self.give_random_card()
-        
-        if self.phase == "fork_wait" and self.fork_arrows == []:
+
+        if self.phase == "step_moving":
             all_stopped = all(not p.is_moving() for p in self.players)
             if all_stopped:
-                self.calculate_fork_arrows()
+                # Один шаг завершён — пробуем следующий
+                self.do_step()
     
     # === Карта и клетки ===
     
@@ -128,32 +129,37 @@ class GameWorld:
     def start_movement(self):
         if self.phase != "wait_move":
             return
-        
-        path = [self.current_player.position]
-        current = self.current_player.position
-        steps_left = self.steps
-        
-        for _ in range(steps_left):
-            cell = BOARD_CELLS[current]
-            valid_paths = [p for p in cell['PATH'] if p != -1]
-            
-            if len(valid_paths) == 1:
-                current = valid_paths[0]
-                path.append(current)
-            elif len(valid_paths) >= 2:
-                self.fork_cell = current
-                self.fork_options = valid_paths
-                self.steps_remaining = steps_left - len(path) + 1
-                self.pending_path = path
-                self.current_player.start_move(path)
-                self.phase = "fork_wait"
-                return
-            else:
-                break
-        
-        self.current_player.start_move(path)
-        self.phase = "moving"
     
+        self.steps_remaining = self.steps
+        self.do_step()
+
+    def do_step(self):
+        """Сделать один шаг. Если развилка — остановиться и ждать выбора."""
+        if self.steps_remaining <= 0:
+            self.phase = "moving"
+            return
+    
+        current = self.current_player.position
+        cell = BOARD_CELLS[current]
+        valid_paths = [p for p in cell['PATH'] if p != -1]
+        
+        if len(valid_paths) == 0:
+            self.phase = "moving"
+            return
+        
+        if len(valid_paths) == 1:
+            # Один путь — идём сразу
+            target = valid_paths[0]
+            self.current_player.start_move([current, target])
+            self.steps_remaining -= 1
+            self.phase = "step_moving"
+        else:
+            # Развилка — ждём выбора
+            self.fork_cell = current
+            self.fork_options = valid_paths
+            self.calculate_fork_arrows()
+            self.phase = "fork_wait"
+ 
     def next_turn(self):
         if any(p.is_moving() for p in self.players):
             return
@@ -223,33 +229,20 @@ class GameWorld:
     def choose_fork(self, target_id):
         if self.phase != "fork_wait":
             return
-        
+    
         if target_id not in self.fork_options:
             return
+    
+        # Делаем шаг в выбранном направлении
+        self.current_player.start_move([self.fork_cell, target_id])
+        self.steps_remaining -= 1
         
-        current = target_id
-        remaining_path = [current]
-        steps_left = self.steps_remaining - 1
-        
-        for _ in range(steps_left):
-            cell = BOARD_CELLS[current]
-            valid_paths = [p for p in cell['PATH'] if p != -1]
-            if valid_paths:
-                current = valid_paths[0]
-                remaining_path.append(current)
-            else:
-                break
-        
-        full_path = [self.fork_cell] + remaining_path
-        
-        self.current_player.start_move(full_path)
         self.fork_cell = None
         self.fork_options = []
         self.fork_arrows = []
-        self.steps_remaining = 0
-        self.pending_path = []
-        self.phase = "moving"
-    
+        
+        self.phase = "step_moving"
+        
     def get_fork_click(self, mouse_pos):
         mx, my = mouse_pos
         
@@ -258,7 +251,7 @@ class GameWorld:
             ay = self.map_y + arrow['y']
             
             dist = ((mx - ax) ** 2 + (my - ay) ** 2) ** 0.5
-            if dist < 35:
+            if dist < 50:
                 return arrow['target']
         
         return None

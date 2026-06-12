@@ -27,15 +27,16 @@ class Player:
         if len(path) < 2:
             self.position = path[-1] if path else self.position
             return
-        
+    
         self.move_path = path
         self.move_progress = 0
         self.moving = True
-        
-        # Начальная позиция
-        start_cell = BOARD_CELLS[path[0]]
-        self.draw_x = start_cell['x'] + CELL_SIZE // 2
-        self.draw_y = start_cell['y'] + CELL_SIZE // 2
+    
+        # Начинаем анимацию с текущей позиции игрока (draw_x/draw_y уже установлены)
+        if self.draw_x is None or self.draw_y is None:
+            start_cell = BOARD_CELLS[path[0]]
+            self.draw_x = start_cell['x'] + CELL_SIZE // 2
+            self.draw_y = start_cell['y'] + CELL_SIZE // 2
     
     def update_move(self):
         """Обновление анимации"""
