@@ -307,3 +307,54 @@ class Renderer:
             
                 label_rect = label.get_rect(center=(cx, cy))
                 screen.blit(label, label_rect)
+    
+    def draw_game_over_screen(self, screen, rating_table):
+        """Экран конца игры с таблицей рекордов"""
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(200)
+        overlay.fill(BLACK)
+        screen.blit(overlay, (0, 0))
+    
+        font_title = pygame.font.Font(None, 72)
+        font_record = pygame.font.Font(None, 36)
+        font_hint = pygame.font.Font(None, 28)
+    
+        title = font_title.render("ИГРА ОКОНЧЕНА", True, GOLD)
+        title_rect = title.get_rect(center=(self.screen_width // 2, 60))
+        screen.blit(title, title_rect)
+        
+        subtitle = font_record.render("Таблица рекордов:", True, WHITE)
+        subtitle_rect = subtitle.get_rect(center=(self.screen_width // 2, 130))
+        screen.blit(subtitle, subtitle_rect)
+        
+        records = rating_table.get_records()
+        start_y = 180
+        
+        header_name = font_record.render("Игрок", True, GOLD)
+        header_points = font_record.render("Очки", True, GOLD)
+        screen.blit(header_name, (self.screen_width // 2 - 150, start_y))
+        screen.blit(header_points, (self.screen_width // 2 + 50, start_y))
+        pygame.draw.line(screen, GOLD,
+                        (self.screen_width // 2 - 180, start_y + 35),
+                        (self.screen_width // 2 + 180, start_y + 35), 2)
+        
+        for i, record in enumerate(records):
+            y = start_y + 50 + i * 40
+            color = PLAYER_COLORS[i % 4] if i < 4 else WHITE
+            
+            num_text = font_record.render(f"{i + 1}.", True, color)
+            name_text = font_record.render(record["name"], True, color)
+            points_text = font_record.render(str(record["points"]), True, GOLD)
+            
+            screen.blit(num_text, (self.screen_width // 2 - 200, y))
+            screen.blit(name_text, (self.screen_width // 2 - 150, y))
+            screen.blit(points_text, (self.screen_width // 2 + 50, y))
+        
+        if not records:
+            empty_text = font_record.render("Нет рекордов", True, GRAY)
+            empty_rect = empty_text.get_rect(center=(self.screen_width // 2, start_y + 80))
+            screen.blit(empty_text, empty_rect)
+        
+        hint = font_hint.render("Кликните или нажмите любую клавишу для выхода в меню", True, GRAY)
+        hint_rect = hint.get_rect(center=(self.screen_width // 2, self.screen_height - 50))
+        screen.blit(hint, hint_rect)

@@ -4,6 +4,7 @@ from settings import *
 from menu import MainMenu, PauseMenu, PlayerSetupMenu
 from gameworld import GameWorld
 from player import Player
+from rating import RatingTable
 
 class Game:
     def __init__(self):
@@ -32,6 +33,8 @@ class Game:
         self.pause_menu = PauseMenu(self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
         
         self.game_world = None
+
+        self.rating_table = RatingTable()
         
         try:
             self.menu_background = pygame.image.load(BACKGROUND_IMAGE)
@@ -142,12 +145,16 @@ class Game:
                     if action == "resume":
                         self.state = "game"
                     elif action == "main_menu":
-                        self.state = "menu"
+                        self.end_game()
                     elif action == "exit":
                         self.running = False
                     
                     if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                         self.state = "game"
+                
+                elif self.state == "game_over":
+                    if event.type == pygame.MOUSEBUTTONDOWN or event.type == pygame.KEYDOWN:
+                        self.state = "menu"
             
             # === Обновление ===
             if self.state == "menu":
@@ -171,12 +178,24 @@ class Game:
             elif self.state == "pause":
                 self.game_world.draw(self.screen, self.map_x, self.map_y)
                 self.pause_menu.draw(self.screen)
+            elif self.state == "game_over":
+                self.draw_game_over_screen()
             
             pygame.display.flip()
             self.clock.tick(60)
         
         pygame.quit()
         sys.exit()
+
+    def end_game(self):
+        """Завершение игры — сохранить результаты и показать таблицу"""
+        if not self.game_world:
+            return
+    
+        for player in self.game_world.players:
+            self.rating_table.add_result(player.name, player.points)
+    
+        self.state = "game_over"
     
     def start_new_game(self, names):
         players = []
@@ -187,7 +206,8 @@ class Game:
         self.game_world = GameWorld(self.SCREEN_WIDTH, self.SCREEN_HEIGHT, 
                                      self.map_x, self.map_y, players)
         self.game_world.give_starting_cards()
-
-        # ТЕСТ: добавить каньон на клетку 0 (стартовая)
-        from settings import LANDSCAPES
-        LANDSCAPES[0] = "canyon"
+    
+    def draw_game_over_screen(self):
+        """Экран конца игры — делегирует рендереру"""
+        if self.game_world:
+            self.game_world.renderer.draw_game_over_screen(self.screen, self.rating_table)
