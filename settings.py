@@ -127,31 +127,56 @@ BUILDING_TYPES = {
         "name": "Хижина рыбака",
         "required_tag": "water",
         "color": (70, 130, 180),
-        "owner_matter": 4,      # владелец при попадании любого
-        "visitor_matter": 2,    # гость при попадании
+        "owner_matter": 4,
+        "visitor_matter": 2,
+        "image": "Prefabs/Pictures/fisher_hut.png",
     },
     "quarry": {
         "name": "Карьер",
         "required_tag": "mountain",
         "color": (160, 140, 100),
-        "owner_matter": 5,      # владелец каждый круг
-        "visitor_matter": 0,    # гости ничего
+        "owner_matter": 5,
+        "visitor_matter": 0,
+        "image": "Prefabs/Pictures/quarry.png",
     },
     "sawmill": {
         "name": "Лесопилка",
         "required_tag": "forest",
         "color": (34, 139, 34),
-        "owner_matter": 2,      # владелец при попадании
-        "visitor_matter": 2,    # гость при попадании (всем поровну)
+        "owner_matter": 2,
+        "visitor_matter": 2,
+        "image": "Prefabs/Pictures/sawmill.png",
     },
     "farm": {
         "name": "Ферма",
         "required_tag": "plain",
         "color": (218, 165, 32),
-        "owner_matter": 1.5,    # владелец при своём попадании
-        "visitor_matter": 1,    # гость при попадании
-        "owner_passive": 0.5,   # владелец когда гость попадает
+        "owner_matter": 1.5,
+        "visitor_matter": 1,
+        "owner_passive": 0.5,
+        "image": "Prefabs/Pictures/farm.png",
     },
+        "house": {
+        "name": "Дом",
+        "required_tag": "plain",
+        "color": (200, 100, 50),
+        "owner_matter": 0,
+        "visitor_matter": 0,
+        "owner_card": True,         # владелец получает карту
+        "image": "Prefabs/Pictures/house.png",
+    },
+}
+
+# Стоимость карт в материи
+CARD_COST = {
+    "fisher_hut": 6,
+    "quarry": 8,
+    "sawmill": 5,
+    "farm": 6,
+    "house": 4,
+    "canyon": 2,
+    "teleport": 1,
+    "points": 0,  # +100 материи — бесплатно, но даёт материю
 }
 
 # Клетки, на которых выдаются карты

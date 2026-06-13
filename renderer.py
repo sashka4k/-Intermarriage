@@ -41,6 +41,30 @@ class Renderer:
             self.background = pygame.transform.scale(self.background, (self.screen_width, self.screen_height))
         except:
             self.background = None
+        
+        # Кеш картинок зданий
+        self.building_images = {}
+        for btype, bdata in BUILDING_TYPES.items():
+            try:
+                img = pygame.image.load(bdata["image"])
+                img = pygame.transform.scale(img, (CELL_SIZE - 30, CELL_SIZE - 30))
+                self.building_images[btype] = img
+            except:
+                self.building_images[btype] = None
+        
+        # Иконка материи
+        try:
+            self.matter_icon = pygame.image.load("Prefabs/Pictures/matter.png")
+            self.matter_icon = pygame.transform.scale(self.matter_icon, (20, 20))
+        except:
+            self.matter_icon = None
+        
+        # Картинка каньона
+        try:
+            self.canyon_image = pygame.image.load("Prefabs/Pictures/canyon.png")
+            self.canyon_image = pygame.transform.scale(self.canyon_image, (CELL_SIZE - 40, CELL_SIZE - 40))
+        except:
+            self.canyon_image = None
     
     def draw(self, screen, game_world):
         # Обновляем статику только при необходимости
@@ -58,7 +82,6 @@ class Renderer:
         self.draw_turn_panel(screen, game_world.current_player, game_world.turn_count, game_world.total_turns)
         self.draw_dice_area(screen, game_world)
         self.draw_hand_button(screen, game_world)
-        self.draw_hand(screen, game_world)
         self.draw_card_hint(screen, game_world)
         self.draw_players_panels(screen, game_world)
     
@@ -73,6 +96,9 @@ class Renderer:
                 CELL_SIZE, CELL_SIZE
             )
             pygame.draw.rect(screen, GOLD, cell_rect, 3)
+        
+        # Рука карт — поверх всего
+        self.draw_hand(screen, game_world)
     
     # === Слои ===
     
@@ -216,7 +242,7 @@ class Renderer:
 
         landscape = LANDSCAPES.get(selected_cell)
         if landscape:
-            landscape_name = "Каньон" if landscape == "canyon" else landscape
+            landscape_name = "Каньон" if landscape["type"] == "canyon" else landscape
             land_text = self.font.render(f"Ландшафт: {landscape_name}", True, (200, 150, 100))
             screen.blit(land_text, (panel_x + 10, y_offset))
             y_offset += 25
@@ -228,11 +254,8 @@ class Renderer:
             screen.blit(build_text, (panel_x + 10, y_offset))
             y_offset += 25
     
-            if building['owner'] is not None:
-                owner_name = players[building['owner']].name if players else f"Игрок {building['owner'] + 1}"
-                owner_text = self.font.render(f"Владелец: {owner_name}", True, WHITE)
-            else:
-                owner_text = self.font.render("Общее здание", True, WHITE)
+            owner_name = players[building['owner']].name if players else f"Игрок {building['owner'] + 1}"
+            owner_text = self.font.render(f"Владелец: {owner_name}", True, WHITE)
             screen.blit(owner_text, (panel_x + 10, y_offset))
             y_offset += 25
 
@@ -278,8 +301,10 @@ class Renderer:
                 name_text = self.font.render(f"{player.name}", True, WHITE)
             screen.blit(name_text, (px + 42, py + 5))
         
-            matter_text = self.font_small.render(f"Материя: {player.matter}", True, GOLD)
-            screen.blit(matter_text, (px + 42, py + 28))
+            if self.matter_icon:
+                screen.blit(self.matter_icon, (px + 42, py + 28))
+            matter_text = self.font_small.render(f"{player.matter}", True, GOLD)
+            screen.blit(matter_text, (px + 65, py + 28))
         
     def draw_grid_and_buildings(self, screen, selected_cell):
         canyon_color = (139, 90, 43)
@@ -298,39 +323,47 @@ class Renderer:
             cx = cell_x + CELL_SIZE // 2
             cy = cell_y + CELL_SIZE // 2
 
-            # Клетка с картой
+            # Клетка с картой — правый верхний угол
             if cell_id in CARD_CELLS:
                 card_icon = self.font_small.render("K", True, WHITE)
-                card_rect = card_icon.get_rect(center=(cx, cy - 30))
+                card_rect = card_icon.get_rect(topright=(cell_x + CELL_SIZE - 5, cell_y + 5))
                 screen.blit(card_icon, card_rect)
         
             # Ландшафт
             landscape = LANDSCAPES.get(cell_id)
-            if landscape == "canyon":
-                rect = pygame.Rect(cell_x + 20, cell_y + 20, CELL_SIZE - 40, CELL_SIZE - 40)
-                pygame.draw.rect(screen, canyon_color, rect, border_radius=5)
-                pygame.draw.rect(screen, canyon_border, rect, 3, border_radius=5)
-                label = self.font_small.render("S", True, WHITE)
-                label_rect = label.get_rect(center=(cx, cy))
-                screen.blit(label, label_rect)
+            if landscape and landscape["type"] == "canyon":
+                if self.canyon_image:
+                    screen.blit(self.canyon_image, (cell_x + 20, cell_y + 20))
+                else:
+                    rect = pygame.Rect(cell_x + 20, cell_y + 20, CELL_SIZE - 40, CELL_SIZE - 40)
+                    pygame.draw.rect(screen, canyon_color, rect, border_radius=5)
+                    pygame.draw.rect(screen, canyon_border, rect, 3, border_radius=5)
+                    label = self.font_small.render("S", True, WHITE)
+                    label_rect = label.get_rect(center=(cx, cy))
+                    screen.blit(label, label_rect)
                 continue
         
             # Постройки
             building = BUILDINGS.get(cell_id)
             if building:
-                bcolor = BUILDING_TYPES[building['building']]['color']
-                rect = pygame.Rect(cell_x + 15, cell_y + 15, CELL_SIZE - 30, CELL_SIZE - 30)
-                pygame.draw.rect(screen, bcolor, rect, border_radius=8)
-            
-                if building['owner'] is not None:
-                    pygame.draw.rect(screen, PLAYER_COLORS[building['owner']], rect, 3, border_radius=8)
-                    label = self.font_small.render("Ч", True, WHITE)
+                btype = building['building']
+                img = self.building_images.get(btype)
+                
+                img_x = cell_x + 15
+                img_y = cell_y + 15
+                
+                if img:
+                    screen.blit(img, (img_x, img_y))
                 else:
-                    pygame.draw.rect(screen, GOLD, rect, 2, border_radius=8)
-                    label = self.font_small.render("О", True, BLACK)
-            
-                label_rect = label.get_rect(center=(cx, cy))
-                screen.blit(label, label_rect)
+                    # Заглушка если картинка не загрузилась
+                    bcolor = BUILDING_TYPES[btype]['color']
+                    rect = pygame.Rect(img_x, img_y, CELL_SIZE - 30, CELL_SIZE - 30)
+                    pygame.draw.rect(screen, bcolor, rect, border_radius=8)
+                
+                # Рамка владельца
+                if building['owner'] is not None:
+                    rect = pygame.Rect(img_x, img_y, CELL_SIZE - 30, CELL_SIZE - 30)
+                    pygame.draw.rect(screen, PLAYER_COLORS[building['owner']], rect, 3, border_radius=8)
     
     def draw_game_over_screen(self, screen, rating_table, winners=None):
         overlay = pygame.Surface((self.screen_width, self.screen_height))
@@ -353,11 +386,11 @@ class Renderer:
                 winner_text = "НИЧЬЯ!"
                 winner_color = WHITE
             elif len(winners) == 1:
-                winner_text = f"Победитель: {winners[0].name} ({winners[0].points} очк.)"
+                winner_text = f"Победитель: {winners[0].name} ({winners[0].matter} мат.)"
                 winner_color = winners[0].color
             else:
                 names = ", ".join(w.name for w in winners)
-                winner_text = f"Победители: {names} ({winners[0].points} очк.)"
+                winner_text = f"Победители: {names} ({winners[0].matter} мат.)"
                 winner_color = GOLD
         
             winner_render = font_winner.render(winner_text, True, winner_color)
@@ -372,7 +405,7 @@ class Renderer:
         start_y = 190
         
         header_name = font_record.render("Игрок", True, GOLD)
-        header_points = font_record.render("Очки", True, GOLD)
+        header_points = font_record.render("Материя", True, GOLD)
         screen.blit(header_name, (self.screen_width // 2 - 150, start_y))
         screen.blit(header_points, (self.screen_width // 2 + 50, start_y))
         pygame.draw.line(screen, GOLD,

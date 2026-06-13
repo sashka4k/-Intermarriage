@@ -200,7 +200,7 @@ class Game:
             return
     
         for player in self.game_world.players:
-            self.rating_table.add_result(player.name, player.points)
+            self.rating_table.add_result(player.name, int(player.matter))
     
         self.winners = self.game_world.get_winners()
         self.state = "game_over"

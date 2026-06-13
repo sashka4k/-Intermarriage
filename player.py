@@ -8,9 +8,7 @@ class Player:
         self.color = color
         self.id = player_id
         self.position = START_CELL  # все начинают со старта
-        self.money = 0
-        self.points = 0
-        self.matter = 0  # материя
+        self.matter = 10  # начальный капитал
         self.hand = None
         
         # Анимация

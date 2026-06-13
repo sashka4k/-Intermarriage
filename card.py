@@ -10,7 +10,8 @@ class Card:
         "sawmill": {"name": "Лесопилка", "color": (34, 139, 34), "desc": "Построить в лесу", "required_tag": "forest"},
         "farm": {"name": "Ферма", "color": (218, 165, 32), "desc": "Построить на равнине", "required_tag": "plain"},
         "teleport": {"name": "Телепорт", "color": (100, 150, 250), "desc": "Переместиться на клетку"},
-        "points": {"name": "+100 очков", "color": (250, 200, 50), "desc": "Получить 100 очков"},
+        "points": {"name": "+1 материи", "color": (250, 200, 50), "desc": "Получить 1 материи"},
+        "house": {"name": "Дом", "color": (200, 100, 50), "desc": "Построить на равнине", "required_tag": "plain"},
         "canyon": {"name": "Каньон", "color": (139, 90, 43), "desc": "Создать каньон на клетке", "is_landscape": True},
     }
     
@@ -35,10 +36,33 @@ class CardHand:
     def __init__(self, max_cards=5):
         self.cards = []
         self.max_cards = max_cards
-        self.visible = False  # показывать ли руку
+        self.visible = False
         self.font_name = pygame.font.Font(None, 20)
         self.font_desc = pygame.font.Font(None, 16)
         self.font_index = pygame.font.Font(None, 24)
+        
+        # Картинки карт (сохраняем оригинал + уменьшенную)
+        self.card_images = {}       # оригинальный размер
+        self.card_images_small = {} # для руки
+        image_map = {
+            "fisher_hut": "Prefabs/Pictures/card_fisher_hut.png",
+            "quarry": "Prefabs/Pictures/card_quarry.png",
+            "sawmill": "Prefabs/Pictures/card_sawmill.png",
+            "farm": "Prefabs/Pictures/card_farm.png",
+            "house": "Prefabs/Pictures/card_house.png",
+            "canyon": "Prefabs/Pictures/card_canyon.png",
+            "teleport": "Prefabs/Pictures/card_teleport.png",
+            "points": "Prefabs/Pictures/card_1_matter.png",
+        }
+        for card_type, path in image_map.items():
+            try:
+                img = pygame.image.load(path)
+                self.card_images[card_type] = img  # оригинал
+                small = pygame.transform.scale(img, (80, 120))
+                self.card_images_small[card_type] = small
+            except:
+                self.card_images[card_type] = None
+                self.card_images_small[card_type] = None
     
     def add_card(self, card):
         """Добавить карту в руку"""
@@ -67,88 +91,82 @@ class CardHand:
         self.visible = not self.visible
     
     def draw(self, screen, screen_width, screen_height):
-        """Отрисовка руки карт внизу экрана"""
+        """Отрисовка руки карт — при наведении оригинальный размер"""
         if not self.visible or not self.cards:
             return
         
-        card_width = 150
-        card_height = 200
-        spacing = 20
-        total_width = len(self.cards) * card_width + (len(self.cards) - 1) * spacing
-        start_x = screen_width // 2 - total_width // 2
-        y = screen_height - card_height - 40
+        small_w, small_h = 80, 120
+        spacing = 15
         
-        # Полупрозрачный фон для всей руки
-        pygame.draw.rect(screen, (20, 20, 40), (0, y - 20, screen_width, card_height + 60))
+        total_width = len(self.cards) * small_w + (len(self.cards) - 1) * spacing
+        start_x = screen_width // 2 - total_width // 2
+        y = screen_height - small_h - 40
+        
+        # Затемнение
+        overlay = pygame.Surface((screen_width, small_h + 80))
+        overlay.set_alpha(100)
+        overlay.fill((20, 20, 40))
+        screen.blit(overlay, (0, y - 30))
+        
+        # Счётчик
+        count_text = f"Карты: {self.count()}/{self.max_cards}"
+        count_render = pygame.font.Font(None, 32).render(count_text, True, GOLD)
+        count_rect = count_render.get_rect(center=(screen_width // 2, y - 15))
+        screen.blit(count_render, count_rect)
         
         mouse_x, mouse_y = pygame.mouse.get_pos()
         
         for i, card in enumerate(self.cards):
-            cx = start_x + i * (card_width + spacing)
+            cx = start_x + i * (small_w + spacing)
             cy = y
             
-            card_rect = pygame.Rect(cx, cy, card_width, card_height)
-            
-            # Подсветка при наведении
+            card_rect = pygame.Rect(cx, cy, small_w, small_h)
             hovered = card_rect.collidepoint(mouse_x, mouse_y)
             
-            # Фон карты
-            bg_color = card.color if not hovered else tuple(min(c + 50, 255) for c in card.color)
-            pygame.draw.rect(screen, bg_color, card_rect, border_radius=12)
-            pygame.draw.rect(screen, WHITE, card_rect, 2, border_radius=12)
-            
-            # Номер карты
-            idx_text = self.font_index.render(str(i + 1), True, WHITE)
-            screen.blit(idx_text, (cx + 10, cy + 8))
-            
-            # Название
-            name_text = self.font_name.render(card.name, True, WHITE)
-            name_rect = name_text.get_rect(center=(cx + card_width // 2, cy + 50))
-            screen.blit(name_text, name_rect)
-            
-            # Описание (перенос строк)
-            desc_words = card.desc.split()
-            line1 = ""
-            line2 = ""
-            for word in desc_words:
-                if len(line1) < 15:
-                    line1 += word + " "
-                else:
-                    line2 += word + " "
-            
-            desc1 = self.font_desc.render(line1.strip(), True, WHITE)
-            desc1_rect = desc1.get_rect(center=(cx + card_width // 2, cy + 100))
-            screen.blit(desc1, desc1_rect)
-            
-            if line2:
-                desc2 = self.font_desc.render(line2.strip(), True, WHITE)
-                desc2_rect = desc2.get_rect(center=(cx + card_width // 2, cy + 120))
-                screen.blit(desc2, desc2_rect)
-            
-            # Иконка-плейсхолдер
-            icon_rect = pygame.Rect(cx + card_width // 2 - 25, cy + 140, 50, 50)
-            pygame.draw.rect(screen, WHITE, icon_rect, 2, border_radius=8)
-            icon_label = self.font_name.render("?", True, WHITE)
-            icon_label_rect = icon_label.get_rect(center=icon_rect.center)
-            screen.blit(icon_label, icon_label_rect)
+            if hovered:
+                img = self.card_images.get(card.type)
+                if img:
+                    scale = 2
+                    ow, oh = int(img.get_width() * scale), int(img.get_height() * scale)
+                    scaled_img = pygame.transform.scale(img, (ow, oh))
+                    
+                    # По центру экрана
+                    ox = (screen_width - ow) // 2
+                    oy = (screen_height - oh) // 2
+                    
+                    # Затемнение фона посильнее
+                    dark = pygame.Surface((screen_width, screen_height))
+                    dark.set_alpha(150)
+                    dark.fill((0, 0, 0))
+                    screen.blit(dark, (0, 0))
+                    
+                    screen.blit(scaled_img, (ox, oy))
+                    big_rect = pygame.Rect(ox, oy, ow, oh)
+                    pygame.draw.rect(screen, GOLD, big_rect, 4, border_radius=8)
+                    
+                    # Не рисуем остальные карты
+                    return
+            else:
+                # Уменьшенная
+                img = self.card_images_small.get(card.type)
+                if img:
+                    screen.blit(img, (cx, cy))
     
     def get_clicked_card(self, mouse_pos, screen_width, screen_height):
-        """Возвращает индекс карты, по которой кликнули, или None"""
         if not self.visible or not self.cards:
             return None
         
-        card_width = 150
-        card_height = 200
-        spacing = 20
-        total_width = len(self.cards) * card_width + (len(self.cards) - 1) * spacing
+        small_w, small_h = 80, 120
+        spacing = 15
+        total_width = len(self.cards) * small_w + (len(self.cards) - 1) * spacing
         start_x = screen_width // 2 - total_width // 2
-        y = screen_height - card_height - 40
+        y = screen_height - small_h - 40
         
         mx, my = mouse_pos
         
         for i in range(len(self.cards)):
-            cx = start_x + i * (card_width + spacing)
-            card_rect = pygame.Rect(cx, y, card_width, card_height)
+            cx = start_x + i * (small_w + spacing)
+            card_rect = pygame.Rect(cx, y, small_w, small_h)
             if card_rect.collidepoint(mx, my):
                 return i
         

@@ -32,7 +32,6 @@ class GameWorld:
         self.pending_path = []
         
         self.selected_card_index = None
-        self.card_played_this_turn = False
         self.canyon_players = {}
 
         self.turn_count = 1
@@ -182,7 +181,6 @@ class GameWorld:
             self.rolled = False
             self.dice.reset()
             self.steps = 0
-            self.card_played_this_turn = False
             self.selected_card_index = None
             self.current_player.hand.visible = False
             self.update_hand_button_text()
@@ -192,7 +190,6 @@ class GameWorld:
         self.rolled = False
         self.dice.reset()
         self.steps = 0
-        self.card_played_this_turn = False
         self.selected_card_index = None
         self.current_player.hand.visible = False
         self.update_hand_button_text()
@@ -273,27 +270,31 @@ class GameWorld:
         count = self.current_player.hand.count()
     
     def play_card(self, index):
-        if self.card_played_this_turn:
+        if self.phase not in ("roll", "wait_move", "moved"):
             return False
-    
+
         hand = self.current_player.hand
         if index < 0 or index >= hand.count():
             return False
-    
+
         card = hand.get_cards()[index]
-    
+        cost = CARD_COST.get(card.type, 0)
+        
+        if self.current_player.matter < cost:
+            return False
+
         if card.type == "points":
-            self.current_player.points += 100
+            self.current_player.matter -= cost
+            self.current_player.matter += 1
             hand.remove_card(index)
-            self.card_played_this_turn = True
             self.selected_card_index = None
             self.update_hand_button_text()
             return True
-    
+
         elif card.type == "teleport":
             self.selected_card_index = index
             return "teleport_pending"
-    
+
         elif card.required_tag is not None:
             self.selected_card_index = index
             return "building_pending"
@@ -301,7 +302,7 @@ class GameWorld:
         elif card.is_landscape:
             self.selected_card_index = index
             return "landscape_pending"
-    
+
         return False
     
     def confirm_teleport(self, cell_id):
@@ -322,9 +323,11 @@ class GameWorld:
         self.current_player.draw_x = None
         self.current_player.draw_y = None
         self.current_player.moving = False
+
+        cost = CARD_COST.get(card.type, 0)
+        self.current_player.matter -= cost
     
         hand.remove_card(self.selected_card_index)
-        self.card_played_this_turn = True
         self.selected_card_index = None
         self.update_hand_button_text()
         return True
@@ -347,13 +350,12 @@ class GameWorld:
         if cell_id in BUILDINGS:
             return False
     
-        if cell_id == self.current_player.position:
-            BUILDINGS[cell_id] = {"building": card.type, "owner": self.current_player.id}
-        else:
-            BUILDINGS[cell_id] = {"building": card.type, "owner": None}
+        BUILDINGS[cell_id] = {"building": card.type, "owner": self.current_player.id}
+
+        cost = CARD_COST.get(card.type, 0)
+        self.current_player.matter -= cost
     
         hand.remove_card(self.selected_card_index)
-        self.card_played_this_turn = True
         self.selected_card_index = None
         self.update_hand_button_text()
         self.renderer.static_needs_update = True
@@ -376,24 +378,26 @@ class GameWorld:
         if cell_id in BUILDINGS:
             return False
     
-        LANDSCAPES[cell_id] = card.type
+        LANDSCAPES[cell_id] = {"type": card.type, "owner": self.current_player.id}
+
+        cost = CARD_COST.get(card.type, 0)
+        self.current_player.matter -= cost
     
         hand.remove_card(self.selected_card_index)
-        self.card_played_this_turn = True
         self.selected_card_index = None
         self.update_hand_button_text()
         self.renderer.static_needs_update = True
         return True
     
     def give_random_card(self):
-        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "canyon"]
+        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "house", "canyon"]
         card_type = random.choice(["teleport", "points"] + building_types)
         card = Card(card_type)
         self.current_player.hand.add_card(card)
         self.update_hand_button_text()
 
     def give_starting_cards(self):
-        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "canyon"]
+        building_types = ["fisher_hut", "quarry", "sawmill", "farm", "house", "canyon"]
         for player in self.players:
             for _ in range(2):
                 card_type = random.choice(["teleport", "points"] + building_types)
@@ -405,8 +409,10 @@ class GameWorld:
         cell = BOARD_CELLS[self.current_player.position]
     
         landscape = LANDSCAPES.get(self.current_player.position)
-        if landscape == "canyon":
-            self.canyon_players[self.current_player.id] = True
+        if landscape and landscape["type"] == "canyon":
+            # Владелец каньона не проваливается
+            if landscape["owner"] != self.current_player.id:
+                self.canyon_players[self.current_player.id] = True
             return
     
         building = BUILDINGS.get(self.current_player.position)
@@ -443,6 +449,14 @@ class GameWorld:
                 self.current_player.matter += 1
                 if owner_id is not None:
                     self.players[owner_id].matter += 0.5
+        
+            # Дом — владелец получает карту при попадании гостя
+        elif btype == "house":
+            if owner_id is not None:
+                self.players[owner_id].hand.add_card(
+                    Card(random.choice(["teleport", "points", "fisher_hut", "quarry", "sawmill", "farm", "house", "canyon"]))
+                )
+                self.update_hand_button_text()
     
     # === Отрисовка ===
     
@@ -453,8 +467,8 @@ class GameWorld:
         return self.turn_count > self.total_turns
     
     def get_winners(self):
-        max_points = max(p.points for p in self.players)
-        winners = [p for p in self.players if p.points == max_points]
+        max_matter = max(p.matter for p in self.players)
+        winners = [p for p in self.players if p.matter == max_matter]
         return winners
     
     def mark_static_dirty(self):
